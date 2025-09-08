@@ -18,12 +18,19 @@ headers = {
 }
 
 try:
-    response = requests.get(f'{FBJS_URL}', headers=headers)
-    response.raise_for_status()
-    data = response.json()
-    print(data)
+    response = requests.get(f'{FBJS_URL}/me', headers=headers)
+    response.raise_for_status()  # raises for HTTP errors
+    if response.text:
+        data = response.json()
+        print(data)
+    else:
+        print("Empty response from server")
+except requests.exceptions.HTTPError as errh:
+    print("HTTP error:", errh)
 except requests.exceptions.RequestException as err:
-    print('Connection closed due to errors:', err)
+    print("Request failed:", err)
+except ValueError as errv:
+    print("Failed to parse JSON:", errv)
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0')
