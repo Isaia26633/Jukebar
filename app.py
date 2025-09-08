@@ -1,31 +1,40 @@
-from flask import Flask
+from flask import Flask, render_template, request, redirect, url_for, session
 import requests
+from functools import wraps
 
 app = Flask(__name__)
-
-@app.route('/')
-def index():
-    return 'SKONG!'
-
-
+app.secret_key = 'OZflqMrpgk868so4frwQUMTHNZq5CVMR'
 
 FBJS_URL = 'https://formbeta.yorktechapps.com/api'
-API_KEY = 'b3d66e63229caced4fd2f2933d023d69bfa983f57cf0119b84d0da35462ad0f3ce1b4ec1ee0acd403c7898a964142703f9857095ed52df8583835ce09856d4c1'
+FBJS_LOGIN = 'https://formbeta.yorktechapps.com/login'
+REDIRECT_URI = 'http://localhost:5000/callback'
 
-headers = {
-    'API': API_KEY,
-    'Content-Type': 'application/json'
-}
+# checks if the user is logged in with fbjs
+def login_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if 'user' not in session:
+            return redirect(url_for('login', redirectURL='/'))
+        return f(*args, **kwargs)
+    return decorated
 
-import requests
+# routes
+@app.route('/')
+def index():
+    return render_template('index.html')
 
-try:
-    response = requests.get(f'{FBJS_URL}/me', headers=headers)
-    response.raise_for_status()
-    data = response.json()
-    print(data)
-except requests.exceptions.RequestException as err:
-    print('Connection closed due to errors:', err)
+# logs in with formbar
+def login():
+    token = request.args.get('token')
+    if token:
+        token_data = jwt.decode(token, options={"verify_signature": False})
+        session['token'] = token_data
+        session['user'] = token_data['username']
+        return redirect(url_for('index'))
+    else:
+        redirectURL = request.args.get('redirectURL', '/')
+        return redirect(f"{FBJS_URL}/oauth?redirectURL={redirectURL}")
+
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0')
