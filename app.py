@@ -18,8 +18,8 @@ headers = {
 }
 
 try:
-    response = requests.get(f'{FBJS_URL}/me', headers=headers)
-    response.raise_for_status()  # raises for HTTP errors
+    response = requests.get(f'{FBJS_URL}', headers=headers)
+    response.raise_for_status()
     if response.text:
         data = response.json()
         print(data)
