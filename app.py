@@ -18,7 +18,7 @@ headers = {
 }
 
 try:
-    response = requests.get(f'{FBJS_URL}/me', headers=headers)
+    response = requests.get(f'{FBJS_URL}', headers=headers)
     response.raise_for_status()
     data = response.json()
     print(data)
