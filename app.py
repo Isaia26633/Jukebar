@@ -9,7 +9,7 @@ def index():
 
 
 
-FBJS_URL = 'https://formbeta.yorktechapps.com/apikey'
+FBJS_URL = 'https://formbeta.yorktechapps.com/api'
 API_KEY = 'b3d66e63229caced4fd2f2933d023d69bfa983f57cf0119b84d0da35462ad0f3ce1b4ec1ee0acd403c7898a964142703f9857095ed52df8583835ce09856d4c1'
 
 headers = {
@@ -17,20 +17,15 @@ headers = {
     'Content-Type': 'application/json'
 }
 
+import requests
+
 try:
-    response = requests.get(f'{FBJS_URL}', headers=headers)
+    response = requests.get(f'{FBJS_URL}/me', headers=headers)
     response.raise_for_status()
-    if response.text:
-        data = response.json()
-        print(data)
-    else:
-        print("Empty response from server")
-except requests.exceptions.HTTPError as errh:
-    print("HTTP error:", errh)
+    data = response.json()
+    print(data)
 except requests.exceptions.RequestException as err:
-    print("Request failed:", err)
-except ValueError as errv:
-    print("Failed to parse JSON:", errv)
+    print('Connection closed due to errors:', err)
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0')
