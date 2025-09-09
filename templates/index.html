@@ -6,8 +6,21 @@
     <title>Login</title>
 </head>
 <body>
-    <a href="{{ url_for('login') }}">
-        <button>Login with FormBar</button>
-    </a>
+    <div class="container">
+        <div class="card">
+            <h1>Welcome, {{ user }}!</h1>
+            
+            {% if session.token %}
+                <h3>Token Info:</h3>
+                <pre>
+Username: {{ session.token.username }}
+Expires: {{ session.token.exp }}
+Refresh Token: {{ session.token.refreshToken }}
+                </pre>
+            {% else %}
+                <p>No token found in session.</p>
+            {% endif %}
+        </div>
+    </div>
 </body>
 </html>
