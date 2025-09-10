@@ -6,21 +6,13 @@
     <title>Login</title>
 </head>
 <body>
-    <div class="container">
-        <div class="card">
-            <h1>Welcome, {{ user }}!</h1>
-            
-            {% if session.token %}
-                <h3>Token Info:</h3>
-                <pre>
-Username: {{ session.token.username }}
-Expires: {{ session.token.exp }}
-Refresh Token: {{ session.token.refreshToken }}
-                </pre>
-            {% else %}
-                <p>No token found in session.</p>
-            {% endif %}
-        </div>
-    </div>
+    <h1>Login</h1>
+    login with formbar below
+    <button onclick="login()">login</button>
 </body>
+<script>
+    login = () => {
+        window.location.href = "/login";
+    }
+</script>
 </html>

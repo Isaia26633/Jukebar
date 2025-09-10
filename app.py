@@ -11,9 +11,8 @@ app.config["SESSION_TYPE"] = "filesystem"
 Session(app)
 
 
-AUTH_URL = "https://formbeta.yorktechapps.com/oauth"
+AUTH_URL = "http://localhost:420/oauth"
 THIS_URL = "http://localhost:3000/login"
-API_KEY = "b3d66e63229caced4fd2f2933d023d69bfa983f57cf0119b84d0da35462ad0f3ce1b4ec1ee0acd403c7898a964142703f9857095ed52df8583835ce09856d4c1"
 
 def is_authenticated(f):
     def wrapper(*args, **kwargs):
@@ -41,43 +40,45 @@ def is_authenticated(f):
     return wrapper
 
 @app.route('/')
-@is_authenticated
+# @is_authenticated
 def index():
     try:
-        return render_template('index.html', user=session.get('user'))
+        print("connected")
+        return render_template('index.html')
     except Exception as e:
+        print("it not working")
         return str(e)
 
 @app.route('/login')
 def login():
     token = request.args.get('token')
+    print(f"Token received: {token}")
     if token:
-        token_data = jwt.decode(token, options={"verify_signature": False})
-        session['token'] = token_data
-        session['user'] = token_data.get('username')
-        return redirect('/')
+        try:
+            token_data = jwt.decode(token, options={"verify_signature": False})
+            print(f"Decoded token data: {token_data}")
+            session['token'] = token_data
+            session['user'] = token_data.get('username')
+            print(f"Session data after login: {session}")
+            return redirect('/welcome')
+        except Exception as e:
+            print(f"Error decoding token: {e}")
+            return str(e)
     else:
         print(f"Redirecting to AUTH_URL: {AUTH_URL}")
         print(f"Redirect URL: {THIS_URL}")
         return redirect(f"{AUTH_URL}?redirectURL={THIS_URL}")
-    
-# debuging
 
-# @app.route('/test-login')
-# def test_login():
-#     fake_token = {
-#         "username": "Isaiah",
-#         "exp": int(time.time()) + 3600,
-#         "refreshToken": "fake_refresh_token"
-#     }
-#     session['token'] = fake_token
-#     session['user'] = fake_token['username']
-#     return redirect('/')
-# clear session
+@app.route('/welcome')
+def welcome():
+    # along with the pages render it passes all the token data into the page
+    return render_template('homepage.html', token=session.get('token'))
+
 
 @app.route('/logout')
 def logout():
     session.clear()
     return redirect('/')
+
 if __name__ == '__main__':
     app.run(port=3000, debug=True, host='0.0.0.0')
