@@ -7,16 +7,16 @@
     <title>player</title>
 </head>
 
-<body onload="findSpotipi()">
+<body>
     <p>it worky</p>
     <button onclick="play()">play this stuff buh</button>
+    <button onclick="findSpotipi()">findSpotipi</button>
 </body>
 <script>
     const spotifyToken = "{{ spotify_token }}"
-    const formbarToken = "{{ formbar_token|tojson }}"
+    // const formbarToken = "{{ formbar_token|tojson }}"
     console.log(spotifyToken)
-    console.log(formbarToken)
-    let digipogs = 100;
+    // console.log(formbarToken)
     let URI = "spotify:track:4PTG3Z6ehGkBFwjybzWkR8"
     let spotifyDeviceID = null;
 
@@ -28,16 +28,15 @@
                     "Authorization": `Bearer ${spotifyToken}`,
                     "Content-Type": "application/json"
                 }
-
-            })
+            });
             if (!response.ok) {
                 throw new Error(`Error fetching devices: ${response.statusText}`);
             }
-
+            const data = await response.json(); // <-- Parse JSON after fetch
             const spotipi = data.devices.find(device => device.name === "SpotiPi");
             if (spotipi) {
-                spotipiDeviceId = spotipi.id;
-                console.log(`Spotipi detected! Device ID: ${spotipiDeviceId}`);
+                spotifyDeviceID = spotipi.id;
+                console.log(`Spotipi detected! Device ID: ${spotifyDeviceID}`);
             } else {
                 console.log("Spotipi not found. Make sure it is connected to Spotify.");
             }
@@ -47,6 +46,39 @@
         }
     }
 
+    function play() {
+        let digipogs = 100;
+        if (digipogs > 25) {
+            digipogs -= 25;
+
+            if (!spotifyDeviceID) {
+                console.error("No Spotify device ID found. Please run findSpotipi() first.");
+                return;
+            }
+            fetch(`https://api.spotify.com/v1/me/player/play?device_id=${spotifyDeviceID}`, {
+                method: 'PUT',
+                headers: {
+                    "Authorization": `Bearer ${spotifyToken}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    "uris": [URI],
+                    "position_ms": digipogs
+                })
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Error playing track: ${response.statusText}`);
+                    }
+                    console.log("Playback started successfully!");
+                })
+                .catch(error => {
+                    console.error('Error starting playback:', error);
+                });
+        } else {
+            console.log("Not enough digipogs to play the track.");
+        }
+    }
 
 </script>
 

@@ -11,6 +11,7 @@ app.config['SECRET_KEY'] = 'OZflqMrpgk868so4frwQUMTHNZq5CVMR'
 app.config["SESSION_TYPE"] = "filesystem"
 Session(app)
 
+formbar_token_global = None
 
 AUTH_URL = "http://localhost:420/oauth"
 THIS_URL = "http://localhost:3000/login"
@@ -52,22 +53,24 @@ def index():
 
 @app.route('/login')
 def login():
+    global formbar_token_global
     token = request.args.get('token')
-    print(f"Token received: {token}")
+    print(f"[login] Token received: {token}")
     if token:
         try:
             token_data = jwt.decode(token, options={"verify_signature": False})
-            print(f"Decoded token data: {token_data}")
+            print(f"[login] Decoded token data: {token_data}")
             session['token'] = token_data
             session['user'] = token_data.get('username')
-            print(f"Session data after login: {session}")
+            print(f"[login] Session data after login: {session}")
+            formbar_token_global = token_data
             return redirect('/spotify')
         except Exception as e:
-            print(f"Error decoding token: {e}")
+            print(f"[login] Error decoding token: {e}")
             return str(e)
     else:
-        print(f"Redirecting to AUTH_URL: {AUTH_URL}")
-        print(f"Redirect URL: {THIS_URL}")
+        print(f"[login] Redirecting to AUTH_URL: {AUTH_URL}")
+        print(f"[login] Redirect URL: {THIS_URL}")
         return redirect(f"{AUTH_URL}?redirectURL={THIS_URL}")
 
 @app.route('/logout')
@@ -85,24 +88,23 @@ SPOTIFY STUFF
 
 CLIENT_ID = "653ea7d8658b4a268b87c85a28fca38c"
 CLIENT_SECRET = "e51042c1ab7a459bb93f91832ea14ce2"
-REDIRECT_URI = "http://127.0.0.1:3000/spotifyPlayer"
+REDIRECT_URI = "http://127.0.0.1:3000/spotify"
 SCOPES = "user-read-playback-state user-modify-playback-state user-read-currently-playing"
 
 @app.route('/spotify')
 def spotify():
-    # Check if the user is returning with an authorization code
     code = request.args.get('code')
+    print(f"[spotify] code: {code}")
     if not code:
-        # Step 1: Redirect to Spotify's authorization page
         auth_url = "https://accounts.spotify.com/authorize?" + urllib.parse.urlencode({
             "client_id": CLIENT_ID,
             "response_type": "code",
             "redirect_uri": REDIRECT_URI,
             "scope": SCOPES
         })
+        print(f"[spotify] Redirecting to Spotify auth URL: {auth_url}")
         return redirect(auth_url)
     else:
-        # Step 2: Handle the callback and exchange the code for an access token
         token_url = "https://accounts.spotify.com/api/token"
         payload = {
             "grant_type": "authorization_code",
@@ -112,20 +114,29 @@ def spotify():
             "client_secret": CLIENT_SECRET
         }
         headers = {"Content-Type": "application/x-www-form-urlencoded"}
+        print(f"[spotify] Requesting token from Spotify with payload: {payload}")
         response = requests.post(token_url, data=payload, headers=headers)
+        print(f"[spotify] Spotify token response status: {response.status_code}, body: {response.text}")
 
         if response.status_code == 200:
             token_data = response.json()
+            print(f"[spotify] Received token data: {token_data}")
             session['spotify_token'] = token_data.get('access_token')
             session['spotify_refresh_token'] = token_data.get('refresh_token')
+            print(f"[spotify] Session after storing Spotify tokens: {dict(session)}")
             return redirect('/spotifyPlayer')
         else:
+            print(f"[spotify] Failed to fetch token: {response.status_code} - {response.text}")
             return f"Failed to fetch token: {response.status_code} - {response.text}", 400
 
 @app.route('/spotifyPlayer')
 def spotifyPlayer():
+    global formbar_token_global
     spotify_token = session.get("spotify_token")
-    formbar_token = session.get("token")
+    formbar_token = formbar_token_global
+    print(f"[spotifyPlayer] spotify_token: {spotify_token}")
+    print(f"[spotifyPlayer] formbar_token: {formbar_token}")
+    print(f"[spotifyPlayer] Full session: {dict(session)}")
     return render_template("spotifyPlayer.html", spotify_token=spotify_token, formbar_token=formbar_token)
 
 if __name__ == '__main__':
