@@ -5,18 +5,164 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>player</title>
-</head>
+    <style>
+        :root{
+            --bg1: #0f172a;
+            --bg2: #0b3a53;
+            --accent: #1DB954;
+            --card: rgba(255,255,255,0.04);
+            --glass: rgba(255,255,255,0.06);
+            --muted: rgba(255,255,255,0.7);
+        }
 
-<body>
+        *{box-sizing:border-box}
+
+        html,body{
+            height:100%;
+            margin:0;
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+            -webkit-font-smoothing:antialiased;
+            -moz-osx-font-smoothing:grayscale;
+        }
+
+        body{
+            min-height:100vh;
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+            gap:18px;
+            padding:48px 20px;
+            color: #fff;
+            background: linear-gradient(160deg,var(--bg1) 0%, var(--bg2) 100%);
+            background-attachment: fixed;
+        }
+
+        /* Headline */
+        p{
+            margin:0;
+            font-size:1.25rem;
+            font-weight:600;
+            padding:14px 20px;
+            border-radius:14px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+            box-shadow: 0 6px 18px rgba(2,6,23,0.6);
+        }
+
+        /* Layout for controls */
+        button{
+            -webkit-appearance:none;
+            appearance:none;
+            border:0;
+            background: linear-gradient(90deg, var(--accent), #1bbf55 70%);
+            color:#071013;
+            padding:10px 16px;
+            border-radius:12px;
+            font-weight:600;
+            cursor:pointer;
+            box-shadow: 0 8px 20px rgba(27,185,84,0.18);
+            transition: transform .14s ease, box-shadow .14s ease, opacity .12s ease;
+        }
+
+        button:active{ transform:translateY(1px); }
+        button:disabled{ opacity:.6; cursor:not-allowed; transform:none }
+
+        /* Search form */
+        form{
+            display:flex;
+            gap:10px;
+            align-items:center;
+            width:min(840px, 94vw);
+        }
+
+        #searchInput{
+            flex:1;
+            padding:12px 14px;
+            border-radius:12px;
+            border:1px solid rgba(255,255,255,0.06);
+            background: var(--glass);
+            color:var(--muted);
+            outline:none;
+            font-size:1rem;
+            transition: box-shadow .12s ease, background .12s ease;
+        }
+
+        #searchInput:focus{
+            box-shadow: 0 6px 18px rgba(11,58,83,0.28);
+            background: rgba(255,255,255,0.04);
+            color:#fff;
+        }
+
+        /* Search results container */
+        #searchResults{
+            width:min(840px, 94vw);
+            background: var(--card);
+            border-radius:12px;
+            padding:10px;
+            max-height:44vh;
+            overflow:auto;
+            box-shadow: 0 10px 30px rgba(2,6,23,0.5);
+        }
+
+        /* Individual result entries (created dynamically) */
+        #searchResults > div{
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            gap:12px;
+            padding:10px 12px;
+            border-radius:10px;
+            margin-bottom:8px;
+            background: rgba(255,255,255,0.02);
+            cursor:pointer;
+            transition: transform .14s ease, background .14s ease, box-shadow .14s ease;
+            color:#fff;
+            font-weight:500;
+        }
+
+        #searchResults > div:hover{
+            background: rgba(255,255,255,0.04);
+            transform: translateX(6px);
+            box-shadow: 0 8px 20px rgba(2,6,23,0.45);
+        }
+
+        /* small helper text (artist names) */
+        #searchResults > div span{
+            color: rgba(255,255,255,0.8);
+            font-weight:400;
+            font-size:0.95rem;
+        }
+
+        /* scrollbar styling for modern browsers */
+        #searchResults::-webkit-scrollbar{ width:10px; height:10px; }
+        #searchResults::-webkit-scrollbar-thumb{ background: rgba(255,255,255,0.06); border-radius:10px; }
+        #searchResults::-webkit-scrollbar-track{ background: transparent; }
+
+        /* Responsive tweaks */
+        @media (max-width:520px){
+            p{ font-size:1rem; padding:10px 14px; border-radius:10px }
+            button{ padding:10px 12px; border-radius:10px }
+            #searchResults{ max-height:36vh; padding:8px }
+            form{ flex-direction:column; align-items:stretch }
+            button[type="submit"]{ width:100% }
+        }
+    </style>
+</head>
+<body onload="findSpotipi()">
     <p>it worky</p>
-    <button onclick="play()">play this stuff buh</button>
-    <button onclick="findSpotipi()">findSpotipi</button>
+    <button onclick="play()">play this stuff</button>
+    <!-- <button onclick="findSpotipi()">findSpotipi</button> -->
+    <form onsubmit="search(event)">
+        <input type="text" id="searchInput" placeholder="Search for a track">
+        <button type="submit">Search</button>
+    </form>
+    <div id="searchResults"></div>
 </body>
 <script>
-    const spotifyToken = "{{ spotify_token }}"
-    // const formbarToken = "{{ formbar_token|tojson }}"
+    const spotifyToken = '{{ spotify_token}}'
+    const formbarToken = '{{ formbar_token}}'
+    let digipogs = 100;
     console.log(spotifyToken)
-    // console.log(formbarToken)
+    console.log(formbarToken)
     let URI = "spotify:track:4PTG3Z6ehGkBFwjybzWkR8"
     let spotifyDeviceID = null;
 
@@ -30,54 +176,129 @@
                 }
             });
             if (!response.ok) {
-                throw new Error(`Error fetching devices: ${response.statusText}`);
+                throw new Error(`Error fetching devices: ${response.statusText}`)
             }
-            const data = await response.json(); // <-- Parse JSON after fetch
-            const spotipi = data.devices.find(device => device.name === "SpotiPi");
+            const data = await response.json();
+            const spotipi = data.devices.find(device => device.name === "SpotiPi")
             if (spotipi) {
                 spotifyDeviceID = spotipi.id;
-                console.log(`Spotipi detected! Device ID: ${spotifyDeviceID}`);
+                console.log(`Spotipi detected! Device ID: ${spotifyDeviceID}`)
+            } else if (data.devices.length > 0) {
+                spotifyDeviceID = data.devices[0].id
+                console.log(`Spotipi not found. Defaulting to device: ${data.devices[0].name} (ID: ${spotifyDeviceID})`)
             } else {
-                console.log("Spotipi not found. Make sure it is connected to Spotify.");
+                console.log("Spotipi not found. Make sure it is connected to Spotify.")
             }
         } catch (error) {
-            console.error('Error fetching devices:', error);
-            return;
+            console.error('Error fetching devices:', error)
+            return
         }
     }
 
-    function play() {
-        let digipogs = 100;
-        if (digipogs > 25) {
+    function play(trackURI) {
+
+        if (digipogs >= 25) {
             digipogs -= 25;
+            console.log(`Playing track with your digipogs! \n ${digipogs} digipogs left.`)
 
             if (!spotifyDeviceID) {
-                console.error("No Spotify device ID found. Please run findSpotipi() first.");
+                console.error("No Spotify device ID found. Please run findSpotipi() first.")
                 return;
             }
-            fetch(`https://api.spotify.com/v1/me/player/play?device_id=${spotifyDeviceID}`, {
-                method: 'PUT',
+            // checks if there is a song playing already
+            fetch('https://api.spotify.com/v1/me/player', {
+                method: 'GET',
                 headers: {
                     "Authorization": `Bearer ${spotifyToken}`,
                     "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    "uris": [URI],
-                    "position_ms": digipogs
-                })
+                }
             })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`Error playing track: ${response.statusText}`);
+                .then(response => response.json())
+                .then(data => {
+                    console.log("Playback state:", data)
+                    if (data && data.is_playing) {
+                        console.log("A track is already playing. Adding to queue...")
+                        fetch(`https://api.spotify.com/v1/me/player/queue?uri=${URI}&device_id=${spotifyDeviceID}`, {
+                            method: 'POST',
+                            headers: {
+                                "Authorization": `Bearer ${spotifyToken}`,
+                                "Content-Type": "application/json"
+                            }
+                        })
+                            .then(response => {
+                                if (!response.ok) {
+                                    throw new Error(`Error adding to queue: ${response.statusText}`)
+                                }
+                                console.log("Track added to queue!")
+                            })
+                            .catch(error => {
+                                console.error('Error adding to queue:', error)
+                            });
+                    } else {
+                        console.log("No track is currently playing.");
+                        fetch(`https://api.spotify.com/v1/me/player/play?device_id=${spotifyDeviceID}`, {
+                            method: 'PUT',
+                            headers: {
+                                "Authorization": `Bearer ${spotifyToken}`,
+                                "Content-Type": "application/json"
+                            },
+                            body: JSON.stringify({
+                                "uris": [URI]
+                            })
+                        })
+                            .then(response => {
+                                if (!response.ok) {
+                                    throw new Error(`Error playing track: ${response.statusText}`)
+                                }
+                                console.log("Playback started successfully!")
+                            })
+                            .catch(error => {
+                                console.error('Error starting playback:', error)
+                            });
                     }
-                    console.log("Playback started successfully!");
                 })
                 .catch(error => {
-                    console.error('Error starting playback:', error);
-                });
+                    console.error('Error fetching playback state:', error)
+                })
         } else {
-            console.log("Not enough digipogs to play the track.");
+            console.log("Not enough digipogs to play the track.")
         }
+    }
+
+    function search(event) {
+        event.preventDefault();
+        const query = document.getElementById('searchInput').value;
+        fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track&limit=20`, {
+            method: 'GET',
+            headers: {
+                "Authorization": `Bearer ${spotifyToken}`,
+                "Content-Type": "application/json"
+            }
+        })
+            .then(response => response.json())
+            .then(data => {
+                const resultsDiv = document.getElementById('searchResults');
+                resultsDiv.innerHTML = '';
+                if (data.tracks && data.tracks.items.length > 0) {
+                    data.tracks.items.forEach(track => {
+                        const trackDiv = document.createElement('div');
+                        const albumArt = track.album.images[0] ? `<img src="${track.album.images[0].url}" alt="Album Art" style="height:40px; width:40px; border-radius:4px; margin-right:10px;">` : '';
+                        trackDiv.innerHTML = `${albumArt} ${track.name} by ${track.artists.map(artist => artist.name).join(', ')}`;
+                        trackDiv.style.cursor = 'pointer';
+                        trackDiv.onclick = () => {
+                            URI = track.uri;
+                            console.log(`Selected track: ${URI}`);
+                            play(URI);
+                        };
+                        resultsDiv.appendChild(trackDiv);
+                    });
+                } else {
+                    resultsDiv.textContent = 'No results found.';
+                }
+            })
+            .catch(error => {
+                console.error('Error searching tracks:', error);
+            });
     }
 
 </script>
