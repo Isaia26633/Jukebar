@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        body {
+            background: #f5f6fa;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        .card {
+            background: #fff;
+            max-width: 400px;
+            margin: 40px auto;
+            padding: 32px 24px 24px 24px;
+            border-radius: 12px;
+            box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+        }
+
+        h3 {
+            font-size: 1.4em;
+            font-weight: 600;
+            color: #222;
+            margin-bottom: 24px;
+        }
+
+        .row {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 18px;
+        }
+
+        label.small {
+            font-size: 0.95em;
+            color: #555;
+            margin-bottom: 6px;
+        }
+
+        input[type="number"], input[type="text"], input {
+            width: 100%;
+            padding: 8px 10px;
+            font-size: 1em;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            background: #f9fafb;
+            transition: border-color 0.2s;
+            outline: none;
+        }
+
+        input:focus {
+            border-color: #7c3aed;
+            background: #fff;
+        }
+
+        .actions {
+            text-align: right;
+            margin-top: 18px;
+        }
+
+        button.primary {
+            background: #7c3aed;
+            color: #fff;
+            border: none;
+            padding: 10px 22px;
+            border-radius: 6px;
+            font-size: 1em;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        button.primary:hover {
+            background: #5b21b6;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="card">
+        <h3 style="margin-top:0">Transfer</h3>
+        <div class="row"><label class="small">From user id</label>
+            <div><input id="from" placeholder="e.g. 2" /></div>
+        </div>
+        <div class="row"><label class="small">To user id</label>
+            <div><input id="to" placeholder="e.g. 3" /></div>
+        </div>
+        <div class="row"><label class="small">Amount</label>
+            <div><input id="amount" type="number" min="1" step="1" value="1" /></div>
+        </div>
+        <div class="row"><label class="small">PIN</label>
+            <div><input id="pin" type="number" min="0" step="1" placeholder="Sender's PIN" /></div>
+        </div>
+        <div class="row"><label class="small">Reason</label>
+            <div><input id="reason" placeholder="e.g. Purchase: Shapes That Go" value="" /></div>
+        </div>
+        <div class="actions"><button class="primary" onclick="doTransfer()">Send Transfer</button></div>
+    </div>
+</body>
+<script>
+        async function post(path, body) {
+            const res = await fetch(path, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            const text = await res.text();
+            try { return JSON.parse(text); } catch { return { raw: text }; }
+        }
+
+        async function doTransfer() {
+            const from = document.getElementById('from').value;
+            const to = document.getElementById('to').value;
+            const amount = document.getElementById('amount').value;
+            const pin = document.getElementById('pin').value;
+            const reason = document.getElementById('reason').value;
+
+            // Validate required fields
+            if (!from || !to || !amount || !pin) {
+                alert('Please fill in all required fields');
+                return;
+            }
+
+            try {
+                const result = await post('/transfer', { from, to, amount, pin, reason });
+                console.log('Transfer result:', result); // Debug log
+                
+                // Check for success in different possible formats
+                const isSuccess = result.ok === true || result.success === true || result.status === 'success' || 
+                                (result.error === undefined && result.token !== undefined);
+                
+                if (isSuccess) {
+                    alert('Transfer successful!');
+                    // Set payment status and close modal
+                    if (window.parent && window.parent.hidePayment) {
+                        window.parent.hidePayment();
+                    }
+                    // Reload page to update payment status
+                    window.location.reload();
+                } else {
+                    alert('Transfer failed: ' + (result.error || result.message || 'Unknown error'));
+                    console.error('Transfer failed:', result);
+                }
+            } catch (error) {
+                console.error('Transfer error:', error);
+                alert('Transfer failed: Network error');
+            }
+        }
+    </script>
+</html>

@@ -5,6 +5,29 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>player</title>
+    <style>
+        .payment-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+        .payment-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            max-width: 500px;
+            width: 90%;
+        }
+    </style>
 </head>
 
 <body>
@@ -13,6 +36,52 @@
     </p>
     <p>Permission: <%= permission %>
     </p>
+    <button onclick="checkPaymentAndPlay()">Play</button>
+    
+    <!-- Payment modal that shows conditionally -->
+    <div id="paymentModal" class="payment-modal">
+        <div class="payment-content">
+            <button onclick="hidePayment()" style="float: right;">&times;</button>
+            <%- include('partials/pay') %>
+        </div>
+    </div>
 </body>
+<script>
+    async function checkPaymentAndPlay() {
+        // Read server-rendered flag
+        const hasPaid = <%- JSON.stringify(hasPaid || false) %>;
 
+        if (!hasPaid) {
+            showPayment();
+            return;
+        }
+
+        // Atomically claim payment on the server so it resets there
+        try {
+            const res = await fetch('/claim-payment', { method: 'POST' });
+            const data = await res.json();
+            if (!data.ok) {
+                // Not paid anymore; ask to pay again
+                showPayment();
+                return;
+            }
+        } catch (e) {
+            console.error('Failed to claim payment', e);
+            showPayment();
+            return;
+        }
+
+        // Now play the audio
+        const audio = new Audio('/audio/Port Of Mystery.mp3');
+        audio.play();
+    }
+    
+    function showPayment() {
+        document.getElementById('paymentModal').style.display = 'block';
+    }
+    
+    function hidePayment() {
+        document.getElementById('paymentModal').style.display = 'none';
+    }
+</script>
 </html>
