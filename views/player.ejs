@@ -21,27 +21,108 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: white;
+            background: transparent;
             padding: 20px;
             border-radius: 10px;
             max-width: 500px;
             width: 90%;
         }
+        body {
+            background: linear-gradient(135deg, #1db954 0%, #191414 100%);
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            color: #fff;
+            margin: 0;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-top: 40px;
+            text-align: center;
+            letter-spacing: 1px;
+        }
+
+        #spotifyPlayer {
+            background: rgba(25, 20, 20, 0.85);
+            border-radius: 20px;
+            max-width: 500px;
+            margin: 40px auto 20px auto;
+            padding: 30px 40px;
+            box-shadow: 0 8px 32px 0 rgba(0,0,0,0.37);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        button {
+            background: #1db954;
+            color: #fff;
+            border: none;
+            border-radius: 50px;
+            padding: 12px 32px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin: 10px auto;
+            display: block;
+        }
+
+        button:hover {
+            background: #1ed760;
+        }
+
+        p {
+            text-align: center;
+            font-size: 1.1rem;
+            margin-bottom: 0;
+        }
+
+        #hide-payment {
+            background: #1db954;
+            border: none;
+            color: #fff;
+            font-size: 1.5rem;
+            cursor: pointer;
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            transition: background 0.2s;
+        }
+        
+        #hide-payment:hover {
+            background: #1ed760;
+        }
+
+        .main-content {
+            transition: filter 0s ease;
+        }
+
+        .main-content.blurred {
+            filter: blur(5px);
+        }
     </style>
 </head>
 
 <body>
-    <h1>Welcome to the Player Page</h1>
-    <p>User: <%= user %>
-    </p>
-    <p>Permission: <%= permission %>
-    </p>
-    <button onclick="checkPaymentAndPlay()">Play</button>
-    
-    <!-- Payment modal that shows conditionally -->
+    <div class="main-content">
+        <h1>Spotify Player</h1>
+        <p>User: <%= user %></p>
+        <div id="spotifyPlayer"></div>
+        <button onclick="checkPaymentAndPlay()">Play</button>
+    </div>
     <div id="paymentModal" class="payment-modal">
         <div class="payment-content">
-            <button onclick="hidePayment()" style="float: right;">&times;</button>
+            <button onclick="hidePayment()" id="hide-payment">&times;</button>
             <%- include('partials/pay') %>
         </div>
     </div>
@@ -78,10 +159,12 @@
     
     function showPayment() {
         document.getElementById('paymentModal').style.display = 'block';
+        document.querySelector('.main-content').classList.add('blurred');
     }
     
     function hidePayment() {
         document.getElementById('paymentModal').style.display = 'none';
+        document.querySelector('.main-content').classList.remove('blurred');
     }
 </script>
 </html>

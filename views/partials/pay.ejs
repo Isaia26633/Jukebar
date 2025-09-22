@@ -7,25 +7,22 @@
     <title>Document</title>
     <style>
         body {
-            background: #f5f6fa;
-            font-family: 'Segoe UI', Arial, sans-serif;
-            margin: 0;
-            padding: 0;
+            background: #191414;
         }
 
         .card {
-            background: #fff;
+            background: #282828;
             max-width: 400px;
             margin: 40px auto;
             padding: 32px 24px 24px 24px;
             border-radius: 12px;
-            box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+            box-shadow: 0 2px 16px rgba(29, 185, 84, 0.30);
         }
 
         h3 {
             font-size: 1.4em;
             font-weight: 600;
-            color: #222;
+            color: rgb(29, 185, 84);
             margin-bottom: 24px;
         }
 
@@ -37,24 +34,28 @@
 
         label.small {
             font-size: 0.95em;
-            color: #555;
+            color: #b3b3b3;
             margin-bottom: 6px;
         }
 
-        input[type="number"], input[type="text"], input {
+        input[type="number"],
+        input[type="text"],
+        input {
             width: 100%;
             padding: 8px 10px;
             font-size: 1em;
-            border: 1px solid #d1d5db;
+            border: 1px solid #535353;
             border-radius: 6px;
-            background: #f9fafb;
+            background: #121212;
+            color: #fff;
             transition: border-color 0.2s;
             outline: none;
+            box-sizing: border-box;
         }
 
         input:focus {
-            border-color: #7c3aed;
-            background: #fff;
+            border-color: #1db954;
+            background: #181818;
         }
 
         .actions {
@@ -63,7 +64,7 @@
         }
 
         button.primary {
-            background: #7c3aed;
+            background: #1db954;
             color: #fff;
             border: none;
             padding: 10px 22px;
@@ -75,7 +76,7 @@
         }
 
         button.primary:hover {
-            background: #5b21b6;
+            background: #1ed760;
         }
     </style>
 </head>
@@ -83,72 +84,64 @@
 <body>
     <div class="card">
         <h3 style="margin-top:0">Transfer</h3>
-        <div class="row"><label class="small">From user id</label>
-            <div><input id="from" placeholder="e.g. 2" /></div>
-        </div>
-        <div class="row"><label class="small">To user id</label>
-            <div><input id="to" placeholder="e.g. 3" /></div>
-        </div>
-        <div class="row"><label class="small">Amount</label>
-            <div><input id="amount" type="number" min="1" step="1" value="1" /></div>
+        <div class="row"><label class="small">User ID</label>
+            <div><input id="from" placeholder="Put your user ID" /></div>
         </div>
         <div class="row"><label class="small">PIN</label>
-            <div><input id="pin" type="number" min="0" step="1" placeholder="Sender's PIN" /></div>
-        </div>
-        <div class="row"><label class="small">Reason</label>
-            <div><input id="reason" placeholder="e.g. Purchase: Shapes That Go" value="" /></div>
+            <div><input id="pin" type="password" pattern="\d*" inputmode="numeric" maxlength="6" placeholder="Input your PIN" oninput="this.value = this.value.replace(/[^0-9]/g,'');" /></div>
         </div>
         <div class="actions"><button class="primary" onclick="doTransfer()">Send Transfer</button></div>
     </div>
 </body>
 <script>
-        async function post(path, body) {
-            const res = await fetch(path, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
-            });
-            const text = await res.text();
-            try { return JSON.parse(text); } catch { return { raw: text }; }
+    async function post(path, body) {
+        const res = await fetch(path, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        const text = await res.text();
+        try { return JSON.parse(text); } catch { return { raw: text }; }
+    }
+
+    async function doTransfer() {
+        const from = document.getElementById('from').value;
+        const to = 1;
+        const amount = 10;
+        const pin = document.getElementById('pin').value;
+        const reason = 'jukebar';
+
+        // Validate required fields
+        if (!from || !to || !amount || !pin) {
+            alert('Please fill in all required fields');
+            return;
         }
 
-        async function doTransfer() {
-            const from = document.getElementById('from').value;
-            const to = document.getElementById('to').value;
-            const amount = document.getElementById('amount').value;
-            const pin = document.getElementById('pin').value;
-            const reason = document.getElementById('reason').value;
+        try {
+            const result = await post('/transfer', { from, to, amount, pin, reason });
+            console.log('Transfer result:', result); // Debug log
 
-            // Validate required fields
-            if (!from || !to || !amount || !pin) {
-                alert('Please fill in all required fields');
-                return;
-            }
+            // Check for success in different possible formats
+            const isSuccess = result.ok === true || result.success === true || result.status === 'success' ||
+                (result.error === undefined && result.token !== undefined);
 
-            try {
-                const result = await post('/transfer', { from, to, amount, pin, reason });
-                console.log('Transfer result:', result); // Debug log
-                
-                // Check for success in different possible formats
-                const isSuccess = result.ok === true || result.success === true || result.status === 'success' || 
-                                (result.error === undefined && result.token !== undefined);
-                
-                if (isSuccess) {
-                    alert('Transfer successful!');
-                    // Set payment status and close modal
-                    if (window.parent && window.parent.hidePayment) {
-                        window.parent.hidePayment();
-                    }
-                    // Reload page to update payment status
-                    window.location.reload();
-                } else {
-                    alert('Transfer failed: ' + (result.error || result.message || 'Unknown error'));
-                    console.error('Transfer failed:', result);
+            if (isSuccess) {
+                alert('Transfer successful!');
+                // Set payment status and close modal
+                if (window.parent && window.parent.hidePayment) {
+                    window.parent.hidePayment();
                 }
-            } catch (error) {
-                console.error('Transfer error:', error);
-                alert('Transfer failed: Network error');
+                // Reload page to update payment status
+                window.location.reload();
+            } else {
+                alert('Transfer failed: ' + (result.error || result.message || 'Unknown error'));
+                console.error('Transfer failed:', result);
             }
+        } catch (error) {
+            console.error('Transfer error:', error);
+            alert('Transfer failed: Network error');
         }
-    </script>
+    }
+</script>
+
 </html>

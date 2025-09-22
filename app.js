@@ -10,12 +10,12 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
+const FORMBAR_ADDRESS = process.env.FORMBAR_ADDRESS || 'http://localhost:420';
+const PUBLIC_KEY = process.env.PUBLIC_KEY || '';
 
 const AUTH_URL = 'http://localhost:420/oauth';
 const THIS_URL = 'http://localhost:3000/login';
 
-const FORMBAR_ADDRESS = process.env.FORMBAR_ADDRESS || 'http://localhost:420';
-const PUBLIC_KEY = process.env.PUBLIC_KEY || '';
 
 
 app.use(session({
@@ -45,7 +45,7 @@ function isAuthenticated(req, res, next) {
     }
 }
 
-app.get('/', (req, res) => {
+app.get('/', isAuthenticated, (req, res) => {
     try {
         res.render('index.ejs', { user: req.session.user })
     }
@@ -58,8 +58,9 @@ app.get('/login', (req, res) => {
     if (req.query.token) {
         let tokenData = jwt.decode(req.query.token);
         req.session.token = tokenData;
-        req.session.user = tokenData.username;
-        const redirectTo = req.query.redirectURL;
+        req.session.user = tokenData.displayName;
+        req.session.permission = tokenData.permission;
+        const redirectTo = req.query.redirectURL || '/spotify';
         res.redirect(redirectTo);
     } else {
         res.redirect(`${AUTH_URL}?redirectURL=${THIS_URL}`);
@@ -77,7 +78,7 @@ app.post('/claim-payment', (req, res) => {
             return res.status(402).json({ ok: false, error: 'Payment required' });
         }
 
-        // this is so the user has to pay again
+        // this is so the user has to pay again after buying something
         req.session.hasPaid = false;
         req.session.save(() => {
             res.json({ ok: true, message: 'Payment claimed' });
@@ -93,10 +94,10 @@ SPOTIFY ROUTES
 
 */
 
-app.get('/spotify', (req, res) => {
+app.get('/spotify', isAuthenticated, (req, res) => {
     try {
-        res.render('player.ejs', { 
-            user: req.session.user, 
+        res.render('player.ejs', {
+            user: req.session.user,
             permission: req.session.permission,
             hasPaid: !!req.session.hasPaid,
             payment: req.session.payment || null
@@ -118,8 +119,8 @@ app.post('/transfer', async (req, res) => {
     try {
         const { from, to, amount, pin, reason } = req.body || {};
         if (!from || !to || !amount || pin == null) {
-          res.status(400).json({ ok: false, error: 'Missing required fields' });
-          return;
+            res.status(400).json({ ok: false, error: 'Missing required fields' });
+            return;
         }
 
         const payload = {
@@ -164,8 +165,15 @@ app.post('/transfer', async (req, res) => {
             return;
         }
 
-        console.log(decoded)
-        const success = decoded && decoded.ok !== false && !decoded.error;
+        console.log('Decoded token:', decoded)
+        // Only allow success if there's an explicit success indicator AND no error
+        const success = decoded && !decoded.error && (
+            decoded.ok === true || 
+            decoded.success === true || 
+            decoded.status === 'success'
+        );
+
+        console.log('Success evaluation:', success);
 
         if (success) {
             req.session.hasPaid = true;
