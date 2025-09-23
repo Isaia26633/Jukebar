@@ -137,12 +137,11 @@
             return;
         }
 
-        // Atomically claim payment on the server so it resets there
+        // claim payment on the server so it resets next time
         try {
             const res = await fetch('/claim-payment', { method: 'POST' });
             const data = await res.json();
             if (!data.ok) {
-                // Not paid anymore; ask to pay again
                 showPayment();
                 return;
             }

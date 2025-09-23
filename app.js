@@ -4,6 +4,7 @@ const app = express();
 const jwt = require('jsonwebtoken');
 const session = require('express-session')
 const dotenv = require('dotenv');
+const sqlite3 = require("sqlite3").verbose();
 dotenv.config();
 app.set('view engine', 'ejs');
 app.use(express.json());
@@ -16,7 +17,13 @@ const PUBLIC_KEY = process.env.PUBLIC_KEY || '';
 const AUTH_URL = 'http://localhost:420/oauth';
 const THIS_URL = 'http://localhost:3000/login';
 
-
+let db = new sqlite3.Database('db/database.db', (err) => {
+    if (err) {
+        console.error(err)
+    } else {
+        console.log("connected to db")
+    }
+})
 
 app.use(session({
     secret: 'thisisasupersecretsigmaskibidikeyandihavethekeytotheuniversebutnobodywillknowabcdefghijklmnopqrstuvwxyz',
@@ -60,13 +67,48 @@ app.get('/login', (req, res) => {
         req.session.token = tokenData;
         req.session.user = tokenData.displayName;
         req.session.permission = tokenData.permission;
-        const redirectTo = req.query.redirectURL || '/spotify';
-        res.redirect(redirectTo);
+        console.log('User ID:', tokenData.id);
+        db.run("INSERT INTO users (id, displayName) VALUES (?, ?)", [tokenData.id, tokenData.displayName], (err) => {
+            // if the table doesnt exist, create it
+            if (err && err.message.includes('no such table')) {
+                db.run("CREATE TABLE users (id INTEGER PRIMARY KEY, displayName TEXT)", (err) => {
+                    if (err) {
+                        console.error('Error creating users table:', err.message);
+                    } else {
+                        console.log('Users table created');
+                        // try inserting again
+                        db.run("INSERT INTO users (id, displayName) VALUES (?, ?)", [tokenData.id, tokenData.displayName], (err) => {
+                            if (err) {
+                                if (err.message.includes('UNIQUE constraint failed')) {
+                                    console.log('User already exists in database');
+                                } else {
+                                    console.error('Database error:', err.message);
+                                }
+                            } else {
+                                console.log('New user added to database');
+                            }
+                        });
+                        const redirectTo = req.query.redirectURL || '/spotify';
+                        res.redirect(redirectTo);
+                    }
+                });
+            } else if (err && err.message.includes('UNIQUE constraint failed')) {
+                console.log('User already exists in database');
+                const redirectTo = req.query.redirectURL || '/spotify';
+                res.redirect(redirectTo);
+            } else if (err) {
+                console.error('Database error:', err.message);
+                res.status(500).send('Database error');
+            } else {
+                console.log('New user added to database');
+                const redirectTo = req.query.redirectURL || '/spotify';
+                res.redirect(redirectTo);
+            }
+        });
     } else {
         res.redirect(`${AUTH_URL}?redirectURL=${THIS_URL}`);
-    };
+    }
 });
-
 app.get('/logout', (req, res) => {
     req.session.destroy();
     res.redirect(`${AUTH_URL}?redirectURL=${THIS_URL}`);
@@ -89,16 +131,16 @@ app.post('/claim-payment', (req, res) => {
 });
 
 /* 
-
+ 
 SPOTIFY ROUTES
-
+ 
 */
 
 app.get('/spotify', isAuthenticated, (req, res) => {
     try {
         res.render('player.ejs', {
             user: req.session.user,
-            permission: req.session.permission,
+            userID: req.session.token?.id,
             hasPaid: !!req.session.hasPaid,
             payment: req.session.payment || null
         })
@@ -109,22 +151,35 @@ app.get('/spotify', isAuthenticated, (req, res) => {
 
 
 /*
-
+ 
 Digipogs requests
-
+ 
 */
 
 
-app.post('/transfer', async (req, res) => {
-    try {
-        const { from, to, amount, pin, reason } = req.body || {};
-        if (!from || !to || !amount || pin == null) {
-            res.status(400).json({ ok: false, error: 'Missing required fields' });
-            return;
-        }
+    app.post('/transfer', async (req, res) => {
+        try {
+            const to = 1;
+            const amount = 10;
+            
+            // Wrap db.get in a Promise
+            const userRow = await new Promise((resolve, reject) => {
+                db.get("SELECT id FROM users WHERE id = ?", [req.session.token?.id], (err, row) => {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve(row);
+                    }
+                });
+            });
+            
+            const { pin, reason } = req.body || {};
 
-        const payload = {
-            from: Number(from),
+            if (!userRow || !userRow.id || !to || !amount || pin == null) {
+                res.status(400).json({ ok: false, error: 'Missing required fields or user not found' });
+                return;
+            }        const payload = {
+            from: Number(userRow.id),
             to: Number(to),
             amount: Number(amount),
             pin: Number(pin),
@@ -168,8 +223,8 @@ app.post('/transfer', async (req, res) => {
         console.log('Decoded token:', decoded)
         // Only allow success if there's an explicit success indicator AND no error
         const success = decoded && !decoded.error && (
-            decoded.ok === true || 
-            decoded.success === true || 
+            decoded.ok === true ||
+            decoded.success === true ||
             decoded.status === 'success'
         );
 
@@ -178,7 +233,7 @@ app.post('/transfer', async (req, res) => {
         if (success) {
             req.session.hasPaid = true;
             req.session.payment = {
-                from: Number(from),
+                from: Number(userRow.id),
                 to: Number(to),
                 amount: Number(amount),
                 at: Date.now()
