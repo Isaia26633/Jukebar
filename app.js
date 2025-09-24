@@ -97,16 +97,16 @@ app.get('/login', (req, res) => {
         req.session.user = tokenData.displayName;
         req.session.permission = tokenData.permission;
         console.log('User ID:', tokenData.id);
-        db.run("INSERT INTO users (id, displayName) VALUES (?, ?)", [tokenData.id, tokenData.displayName], (err) => {
+        db.run("INSERT INTO users (id, displayName, pin) VALUES (?, ?, ?)", [tokenData.id, tokenData.displayName, null], (err) => {
             // if the table doesnt exist, create it
             if (err && err.message.includes('no such table')) {
-                db.run("CREATE TABLE users (id INTEGER PRIMARY KEY, displayName TEXT)", (err) => {
+                db.run("CREATE TABLE users (id INTEGER PRIMARY KEY, displayName TEXT, pin INTERGER)", (err) => {
                     if (err) {
                         console.error('Error creating users table:', err.message);
                     } else {
                         console.log('Users table created');
                         // try inserting again
-                        db.run("INSERT INTO users (id, displayName) VALUES (?, ?)", [tokenData.id, tokenData.displayName], (err) => {
+                        db.run("INSERT INTO users (id, displayName, pin) VALUES (?, ?, ?)", [tokenData.id, tokenData.displayName, null], (err) => {
                             if (err) {
                                 if (err.message.includes('UNIQUE constraint failed')) {
                                     console.log('User already exists in database');
@@ -179,42 +179,87 @@ app.get('/spotify', isAuthenticated, (req, res) => {
 });
 
 app.post('/search', async (req, res) => {
-  try {
-    const { query } = req.body || {};
-    if (!query || !query.trim()) {
-      return res.status(400).json({ ok: false, error: 'Missing query' });
+    try {
+        const { query } = req.body || {};
+        if (!query || !query.trim()) {
+            return res.status(400).json({ ok: false, error: 'Missing query' });
+        }
+
+        await ensureSpotifyAccessToken();
+
+        const searchData = await spotifyApi.searchTracks(query, { limit: 25 });
+        const items = searchData.body.tracks.items || [];
+
+        const simplified = items.map(t => ({
+            id: t.id,
+            name: t.name,
+            artist: t.artists.map(a => a.name).join(', '),
+            uri: t.uri,
+            album: {
+                name: t.album.name,
+                image: t.album.images?.[0]?.url || null
+            }
+        }));
+
+        return res.json({
+            ok: true,
+            tracks: { items: simplified }
+        });
+    } catch (err) {
+        console.error('Search error:', err);
+        if (err.statusCode === 401) {
+            return res.status(401).json({ ok: false, error: 'Spotify auth failed' });
+        }
+        res.status(500).json({ ok: false, error: 'Internal search error' });
     }
-
-    await ensureSpotifyAccessToken();
-
-    const searchData = await spotifyApi.searchTracks(query, { limit: 25 });
-    const items = searchData.body.tracks.items || [];
-
-    const simplified = items.map(t => ({
-      id: t.id,
-      name: t.name,
-      artists: t.artists.map(a => a.name),
-      uri: t.uri,
-      album: {
-        name: t.album.name,
-        image: t.album.images?.[0]?.url || null
-      }
-    }));
-
-    return res.json({
-      ok: true,
-      tracks: { items: simplified }
-    });
-  } catch (err) {
-    console.error('Search error:', err);
-    if (err.statusCode === 401) {
-      return res.status(401).json({ ok: false, error: 'Spotify auth failed' });
-    }
-    res.status(500).json({ ok: false, error: 'Internal search error' });
-  }
 });
 
+app.post('/play', (req, res) => {
+    const { uri } = req.body;
 
+    if (!uri) {
+        return res.status(400).json({ error: "Missing track URI" });
+    }
+
+    const trackIdPattern = /^spotify:track:([a-zA-Z0-9]{22})$/;
+    const match = uri.match(trackIdPattern);
+    if (!match) {
+        return res.status(400).json({ error: 'Invalid track URI format' });
+    }
+    const trackId = match[1];
+
+    // Check payment status
+    if (!req.session?.hasPaid) {
+        return res.status(402).json({ ok: false, error: 'Payment required' });
+    }
+
+    spotifyApi.getTrack(trackId)
+        .then(trackData => {
+            const track = trackData.body;
+            const trackInfo = {
+                name: track.name,
+                artist: track.artists.map(a => a.name).join(', '),
+                uri: track.uri,
+                cover: track.album.images[0].url,
+            };
+
+            spotifyApi.play({ uris: [uri] })
+                .then(() => {
+                    req.session.hasPaid = false;
+                    req.session.save(() => {
+                        res.json({ success: true, message: "Playing track!", trackInfo });
+                    });
+                })
+                .catch(err => {
+                    console.error('Error:', err);
+                    res.status(500).json({ error: "Playback failed, make sure Spotify is open" });
+                });
+        })
+        .catch(err => {
+            console.error('Error fetching track details:', err);
+            res.status(500).json({ error: `Error: ${err.message}` });
+        });
+});
 
 /*
  
@@ -354,7 +399,7 @@ app.post('/get-pin', (req, res) => {
 });
 
 app.get('/payment-status', (req, res) => {
-  res.json({ ok: true, hasPaid: !!req.session.hasPaid });
+    res.json({ ok: true, hasPaid: !!req.session.hasPaid });
 });
 
 app.listen(port, () => {

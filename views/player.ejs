@@ -189,8 +189,8 @@
                     trackDiv.style.marginBottom = '10px';
                     trackDiv.innerHTML = `
                         <img src="${track.album.image}" alt="${track.album.name}" id="album-cover" />
-                        <strong>${track.name}</strong> by ${track.artists.name}
-                        <button onclick="checkPaymentAndPlay('${track.uri}')">Play</button>
+                        <strong>${track.name}</strong> by ${track.artist}
+                        <button onclick="playTrack('${track.uri}')">Play</button>
                     `;
                     resultsDiv.appendChild(trackDiv);
                 });
@@ -203,21 +203,24 @@
     }
     function playTrack(uri) {
         if (hasPaid) {
-            fetch('/play-spotify', {
+            console.log('Playing track:', uri);
+            fetch('/play', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ uri })
             })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.ok) {
+                .then(response => {
+                    if (response.ok) {
                         alert('Playing track on your Spotify device!');
                     } else {
-                        alert('Failed to play track: ' + data.error);
+                        return response.json().then(data => {
+                            alert('Failed to play track: ' + (data.error || 'Unknown error'));
+                        });
                     }
                 })
                 .catch(error => {
                     console.error('Error playing track:', error);
+                    alert('Failed to play track: Network error');
                 });
         } else {
             showPayment();
