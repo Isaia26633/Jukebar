@@ -5,11 +5,40 @@ const jwt = require('jsonwebtoken');
 const session = require('express-session')
 const dotenv = require('dotenv');
 const sqlite3 = require("sqlite3").verbose();
+const SpotifyWebApi = require('spotify-web-api-node');
 dotenv.config();
 app.set('view engine', 'ejs');
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
+
+
+const {
+    SPOTIFY_CLIENT_ID,
+    SPOTIFY_CLIENT_SECRET,
+    SPOTIFY_REFRESH_TOKEN
+} = process.env;
+
+const spotifyApi = new SpotifyWebApi({
+    clientId: SPOTIFY_CLIENT_ID,
+    clientSecret: SPOTIFY_CLIENT_SECRET
+});
+
+spotifyApi.setRefreshToken(SPOTIFY_REFRESH_TOKEN);
+
+async function ensureSpotifyAccessToken() {
+    const current = spotifyApi.getAccessToken();
+    try {
+        if (!current) {
+            const data = await spotifyApi.refreshAccessToken();
+            spotifyApi.setAccessToken(data.body.access_token);
+        }
+    } catch (err) {
+        console.error('Failed to refresh Spotify token:', err.message);
+        throw err;
+    }
+}
+
 
 const FORMBAR_ADDRESS = process.env.FORMBAR_ADDRESS || 'http://localhost:420';
 const PUBLIC_KEY = process.env.PUBLIC_KEY || '';
@@ -54,7 +83,7 @@ function isAuthenticated(req, res, next) {
 
 app.get('/', isAuthenticated, (req, res) => {
     try {
-        res.render('index.ejs', { user: req.session.user })
+        res.render('player.ejs', { user: req.session.user })
     }
     catch (error) {
         res.send(error.message)
@@ -149,36 +178,72 @@ app.get('/spotify', isAuthenticated, (req, res) => {
     }
 });
 
+app.post('/search', async (req, res) => {
+  try {
+    const { query } = req.body || {};
+    if (!query || !query.trim()) {
+      return res.status(400).json({ ok: false, error: 'Missing query' });
+    }
+
+    await ensureSpotifyAccessToken();
+
+    const searchData = await spotifyApi.searchTracks(query, { limit: 25 });
+    const items = searchData.body.tracks.items || [];
+
+    const simplified = items.map(t => ({
+      id: t.id,
+      name: t.name,
+      artists: t.artists.map(a => a.name),
+      uri: t.uri,
+      album: {
+        name: t.album.name,
+        image: t.album.images?.[0]?.url || null
+      }
+    }));
+
+    return res.json({
+      ok: true,
+      tracks: { items: simplified }
+    });
+  } catch (err) {
+    console.error('Search error:', err);
+    if (err.statusCode === 401) {
+      return res.status(401).json({ ok: false, error: 'Spotify auth failed' });
+    }
+    res.status(500).json({ ok: false, error: 'Internal search error' });
+  }
+});
+
+
 
 /*
  
-Digipogs requests
+Digipog requests
  
 */
 
 
-    app.post('/transfer', async (req, res) => {
-        try {
-            const to = 1;
-            const amount = 10;
-            
-            // Wrap db.get in a Promise
-            const userRow = await new Promise((resolve, reject) => {
-                db.get("SELECT id FROM users WHERE id = ?", [req.session.token?.id], (err, row) => {
-                    if (err) {
-                        reject(err);
-                    } else {
-                        resolve(row);
-                    }
-                });
-            });
-            
-            const { pin, reason } = req.body || {};
+app.post('/transfer', async (req, res) => {
+    try {
+        const to = 1;
+        const amount = 10;
 
-            if (!userRow || !userRow.id || !to || !amount || pin == null) {
-                res.status(400).json({ ok: false, error: 'Missing required fields or user not found' });
-                return;
-            }        const payload = {
+        const userRow = await new Promise((resolve, reject) => {
+            db.get("SELECT id FROM users WHERE id = ?", [req.session.token?.id], (err, row) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(row);
+                }
+            });
+        });
+
+        const { pin, reason } = req.body || {};
+
+        if (!userRow || !userRow.id || !to || !amount || pin == null) {
+            res.status(400).json({ ok: false, error: 'Missing required fields or user not found' });
+            return;
+        } const payload = {
             from: Number(userRow.id),
             to: Number(to),
             amount: Number(amount),
@@ -246,6 +311,50 @@ Digipogs requests
     } catch (err) {
         res.status(502).json({ ok: false, error: 'HTTP request to Formbar failed', details: err?.message || String(err) });
     }
+});
+
+app.post('/save-pin', (req, res) => {
+    const { pin } = req.body || {};
+
+    if (!pin) {
+        return res.status(400).json({ ok: false, error: 'PIN is required' });
+    }
+
+    if (!req.session.token || !req.session.token.id) {
+        return res.status(401).json({ ok: false, error: 'Not authenticated' });
+    }
+
+    console.log('Saving PIN for user', req.session.token.id);
+    db.run("UPDATE users SET pin = ? WHERE id = ?", [pin, req.session.token.id], function (err) {
+        if (err) {
+            console.error('Database error:', err.message);
+            return res.status(500).json({ ok: false, error: 'Database error' });
+        } else {
+            console.log('PIN saved for user', req.session.token.id);
+            res.json({ ok: true });
+        }
+    });
+});
+
+app.post('/get-pin', (req, res) => {
+    if (!req.session.token || !req.session.token.id) {
+        return res.status(401).json({ ok: false, error: 'Not authenticated' });
+    }
+
+    db.get("SELECT pin FROM users WHERE id = ?", [req.session.token.id], (err, row) => {
+        if (err) {
+            console.error('Database error:', err.message);
+            return res.status(500).json({ ok: false, error: 'Database error' });
+        }
+        if (!row) {
+            return res.status(404).json({ ok: false, error: 'User not found' });
+        }
+        res.json({ ok: true, userPin: row.pin || '' });
+    });
+});
+
+app.get('/payment-status', (req, res) => {
+  res.json({ ok: true, hasPaid: !!req.session.hasPaid });
 });
 
 app.listen(port, () => {

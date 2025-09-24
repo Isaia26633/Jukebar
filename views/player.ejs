@@ -13,9 +13,10 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0,0,0,0.5);
+            background-color: rgba(0, 0, 0, 0.5);
             z-index: 1000;
         }
+
         .payment-content {
             position: absolute;
             top: 50%;
@@ -27,13 +28,14 @@
             max-width: 500px;
             width: 90%;
         }
+
         body {
             background: linear-gradient(135deg, #1db954 0%, #191414 100%);
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
             color: #fff;
             margin: 0;
             height: 100vh;
-            overflow: hidden;
+            /* overflow: hidden; */
         }
 
         h1 {
@@ -50,7 +52,7 @@
             max-width: 500px;
             margin: 40px auto 20px auto;
             padding: 30px 40px;
-            box-shadow: 0 8px 32px 0 rgba(0,0,0,0.37);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -98,7 +100,7 @@
             padding: 0;
             transition: background 0.2s;
         }
-        
+
         #hide-payment:hover {
             background: #1ed760;
         }
@@ -110,15 +112,26 @@
         .main-content.blurred {
             filter: blur(5px);
         }
+        #album-cover {
+            width: 64px;
+            height: 64px;
+            border-radius: 8px;
+            vertical-align: middle;
+            margin-right: 10px;
+        }
     </style>
 </head>
 
 <body>
     <div class="main-content">
         <h1>Spotify Player</h1>
-        <p>User: <%= user %></p>
-        <div id="spotifyPlayer"></div>
-        <button onclick="checkPaymentAndPlay()">Play</button>
+        <p>User: <%= user %>
+        </p>
+        <div id="spotifyPlayer">
+            <input type="text" id="searchInput" placeholder="Search for a song, artist, or album" />
+            <button id="searchButton" onclick="searchSpotify()">Search</button>
+            <div id="searchResults"></div>
+        </div>
     </div>
     <div id="paymentModal" class="payment-modal">
         <div class="payment-content">
@@ -128,10 +141,11 @@
     </div>
 </body>
 <script>
-    async function checkPaymentAndPlay() {
-        // Read server-rendered flag
-        const hasPaid = <%- JSON.stringify(hasPaid || false) %>;
+    // Global payment status flag
+    let hasPaid = <%= JSON.stringify(hasPaid || false) %>;
 
+    async function checkPaymentAndPlay(uri) {
+        console.log('checkPaymentAndPlay called - hasPaid value:', hasPaid);
         if (!hasPaid) {
             showPayment();
             return;
@@ -151,19 +165,73 @@
             return;
         }
 
-        // Now play the audio
-        const audio = new Audio('/audio/Port Of Mystery.mp3');
-        audio.play();
+        
     }
-    
+
+
+    async function searchSpotify() {
+        const query = document.getElementById('searchInput').value;
+        if (!query) return;
+
+        try {
+            const response = await fetch('/search', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query })
+            });
+            const data = await response.json();
+            const resultsDiv = document.getElementById('searchResults');
+            resultsDiv.innerHTML = '';
+
+            if (data.tracks && data.tracks.items.length > 0) {
+                data.tracks.items.forEach(track => {
+                    const trackDiv = document.createElement('div');
+                    trackDiv.style.marginBottom = '10px';
+                    trackDiv.innerHTML = `
+                        <img src="${track.album.image}" alt="${track.album.name}" id="album-cover" />
+                        <strong>${track.name}</strong> by ${track.artists.name}
+                        <button onclick="checkPaymentAndPlay('${track.uri}')">Play</button>
+                    `;
+                    resultsDiv.appendChild(trackDiv);
+                });
+            } else {
+                resultsDiv.innerHTML = '<p>No results found.</p>';
+            }
+        } catch (error) {
+            console.error('Error searching Spotify:', error);
+        }
+    }
+    function playTrack(uri) {
+        if (hasPaid) {
+            fetch('/play-spotify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ uri })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.ok) {
+                        alert('Playing track on your Spotify device!');
+                    } else {
+                        alert('Failed to play track: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error playing track:', error);
+                });
+        } else {
+            showPayment();
+        }
+    }
     function showPayment() {
         document.getElementById('paymentModal').style.display = 'block';
         document.querySelector('.main-content').classList.add('blurred');
     }
-    
+
     function hidePayment() {
         document.getElementById('paymentModal').style.display = 'none';
         document.querySelector('.main-content').classList.remove('blurred');
     }
 </script>
+
 </html>
