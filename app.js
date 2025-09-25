@@ -10,7 +10,6 @@ dotenv.config();
 app.set('view engine', 'ejs');
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static('public'));
 
 
 const {
@@ -259,6 +258,69 @@ app.post('/play', (req, res) => {
             console.error('Error fetching track details:', err);
             res.status(500).json({ error: `Error: ${err.message}` });
         });
+});
+
+app.post('/addToQueue', (req, res) => {
+    const { uri } = req.body;
+    if (!uri) {
+        return res.status(400).json({ error: "Missing track URI" });
+    }
+    const trackIdPattern = /^spotify:track:([a-zA-Z0-9]{22})$/;
+    const match = uri.match(trackIdPattern);
+    if (!match) {
+        return res.status(400).json({ error: 'Invalid track URI format' });
+    }
+    const trackId = match[1];
+    // Check payment status
+    if (!req.session?.hasPaid) {
+        return res.status(402).json({ ok: false, error: 'Payment required' });
+    }
+    spotifyApi.getTrack(trackId)
+        .then(trackData => {
+            const track = trackData.body;
+            const trackInfo = {
+                name: track.name,
+                artist: track.artists.map(a => a.name).join(', '),
+                uri: track.uri,
+                cover: track.album.images[0].url,
+            };
+            spotifyApi.addToQueue(uri)
+
+                .then(() => {
+                    req.session.hasPaid = false;
+                    req.session.save(() => {
+                        res.json({ success: true, message: "Track queued!", trackInfo });
+                    });
+                })
+                .catch(err => {
+                    console.error('Error:', err);
+                    res.status(500).json({ error: "Queueing failed, make sure Spotify is open" });
+                });
+        })
+        .catch(err => {
+            console.error('Error fetching track details:', err);
+            res.status(500).json({ error: `Error: ${err.message}` });
+        });
+});
+
+
+app.get('/playback-status', async (req, res) => {
+    try {
+        await ensureSpotifyAccessToken();
+        const response = await fetch('https://api.spotify.com/v1/me/player', {
+            headers: { 'Authorization': `Bearer ${spotifyApi.getAccessToken()}` }
+        });
+        
+        if (response.status === 200) {
+            const data = await response.json();
+            res.json({ isPlaying: data.is_playing, track: data.item });
+        } else {
+            res.json({ isPlaying: false });
+        }
+    } catch (error) {
+        console.error('Playback status error:', error);
+        res.status(500).json({ error: 'Failed to get playback state', details: error.message });
+    }
 });
 
 /*
