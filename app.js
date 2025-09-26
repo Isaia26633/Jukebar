@@ -39,11 +39,11 @@ async function ensureSpotifyAccessToken() {
 }
 
 
-const FORMBAR_ADDRESS = process.env.FORMBAR_ADDRESS || 'http://localhost:420';
+const FORMBAR_ADDRESS = process.env.FORMBAR_ADDRESS;
 const PUBLIC_KEY = process.env.PUBLIC_KEY || '';
 
-const AUTH_URL = 'http://localhost:420/oauth';
-const THIS_URL = 'http://localhost:3000/login';
+const AUTH_URL = `${FORMBAR_ADDRESS}/oauth`;
+const THIS_URL = 'http://172.16.3.180:3000/login';
 
 let db = new sqlite3.Database('db/database.db', (err) => {
     if (err) {
@@ -61,7 +61,9 @@ app.use(session({
 
 function isAuthenticated(req, res, next) {
     if (req.session.user) {
+        console.log('User is authenticated');
         const tokenData = req.session.token;
+        console.log(req);
 
         try {
             // Check if the token has expired
@@ -74,6 +76,8 @@ function isAuthenticated(req, res, next) {
         } catch (err) {
             req.session.destroy();
             res.redirect('/login');
+            console.log('User is not authenticated');
+            console.log(req);
         }
     } else {
         res.redirect('/login');
@@ -82,6 +86,7 @@ function isAuthenticated(req, res, next) {
 
 app.get('/', isAuthenticated, (req, res) => {
     try {
+        console.log('User is authenticated');
         res.render('player.ejs', { user: req.session.user })
     }
     catch (error) {
@@ -91,6 +96,8 @@ app.get('/', isAuthenticated, (req, res) => {
 
 app.get('/login', (req, res) => {
     if (req.query.token) {
+        console.log('login token received');
+        
         let tokenData = jwt.decode(req.query.token);
         req.session.token = tokenData;
         req.session.user = tokenData.displayName;
@@ -135,6 +142,8 @@ app.get('/login', (req, res) => {
         });
     } else {
         res.redirect(`${AUTH_URL}?redirectURL=${THIS_URL}`);
+        console.log('User is not authenticated');
+        console.log(req);
     }
 });
 app.get('/logout', (req, res) => {
@@ -350,7 +359,8 @@ app.post('/transfer', async (req, res) => {
         if (!userRow || !userRow.id || !to || !amount || pin == null) {
             res.status(400).json({ ok: false, error: 'Missing required fields or user not found' });
             return;
-        } const payload = {
+        } 
+        const payload = {
             from: Number(userRow.id),
             to: Number(to),
             amount: Number(amount),
