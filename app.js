@@ -63,7 +63,7 @@ function isAuthenticated(req, res, next) {
     if (req.session.user) {
         console.log('User is authenticated');
         const tokenData = req.session.token;
-        console.log(req);
+        // console.log(req);
 
         try {
             // Check if the token has expired
@@ -76,8 +76,8 @@ function isAuthenticated(req, res, next) {
         } catch (err) {
             req.session.destroy();
             res.redirect('/login');
-            console.log('User is not authenticated');
-            console.log(req);
+            // console.log('User is not authenticated');
+            // console.log(req);
         }
     } else {
         res.redirect('/login');
@@ -86,7 +86,7 @@ function isAuthenticated(req, res, next) {
 
 app.get('/', isAuthenticated, (req, res) => {
     try {
-        console.log('User is authenticated');
+        // console.log('User is authenticated');
         res.render('player.ejs', { user: req.session.user })
     }
     catch (error) {
@@ -102,7 +102,7 @@ app.get('/login', (req, res) => {
         req.session.token = tokenData;
         req.session.user = tokenData.displayName;
         req.session.permission = tokenData.permission;
-        console.log('User ID:', tokenData.id);
+        // console.log('User ID:', tokenData.id);
         db.run("INSERT INTO users (id, displayName, pin) VALUES (?, ?, ?)", [tokenData.id, tokenData.displayName, null], (err) => {
             // if the table doesnt exist, create it
             if (err && err.message.includes('no such table')) {
@@ -143,7 +143,7 @@ app.get('/login', (req, res) => {
     } else {
         res.redirect(`${AUTH_URL}?redirectURL=${THIS_URL}`);
         console.log('User is not authenticated');
-        console.log(req);
+        // console.log(req);
     }
 });
 app.get('/logout', (req, res) => {
@@ -166,6 +166,20 @@ app.post('/claim-payment', (req, res) => {
         res.status(500).json({ ok: false, error: 'Failed to claim payment' });
     }
 });
+
+app.post('/get-perms', (req, res) => {
+    try {
+        if (tokenData.className) {
+            constructor(parameters) {
+                
+            }
+        }
+    } catch (err) {
+        console.error('Error getting permissions:', err);
+        res.status(500).json({ ok: false, error: 'Failed to get permissions' });
+    }
+});
+
 
 /* 
  
@@ -208,7 +222,6 @@ app.post('/search', async (req, res) => {
                 image: t.album.images?.[0]?.url || null
             }
         }));
-
         return res.json({
             ok: true,
             tracks: { items: simplified }
@@ -341,7 +354,7 @@ Digipog requests
 
 app.post('/transfer', async (req, res) => {
     try {
-        const to = 1;
+        let to = 37;
         const amount = 10;
 
         const userRow = await new Promise((resolve, reject) => {
@@ -360,6 +373,9 @@ app.post('/transfer', async (req, res) => {
             res.status(400).json({ ok: false, error: 'Missing required fields or user not found' });
             return;
         } 
+        if (from === to) {
+            to = 38;
+        }
         const payload = {
             from: Number(userRow.id),
             to: Number(to),
