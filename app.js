@@ -10,6 +10,11 @@ dotenv.config();
 app.set('view engine', 'ejs');
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+const http = require('http');
+const { Server } = require('socket.io');
+const { io: ioClient } = require('socket.io-client');
+const server = http.createServer(app);
+const io = new Server(server);
 
 
 const {
@@ -41,9 +46,31 @@ async function ensureSpotifyAccessToken() {
 
 const FORMBAR_ADDRESS = process.env.FORMBAR_ADDRESS;
 const PUBLIC_KEY = process.env.PUBLIC_KEY || '';
+const API_KEY = process.env.API_KEY || '';
 
 const AUTH_URL = `${FORMBAR_ADDRESS}/oauth`;
 const THIS_URL = 'http://172.16.3.180:3000/login';
+
+let reqOptions =
+{
+    method: 'GET',
+    headers: {
+        'API': API_KEY,
+        'Content-Type': 'application/json'
+    }
+};
+
+const formbarSocket = ioClient(FORMBAR_ADDRESS, {
+    extraHeaders: { api: API_KEY }
+});
+
+formbarSocket.on('connect', () => {
+    console.log('✅ Connected to Formbar');
+});
+
+formbarSocket.on('setClassPermissionSetting', (permission, level) => {
+    console.log(`🔔 Permission changed: ${permission} = ${level}`);
+});
 
 let db = new sqlite3.Database('db/database.db', (err) => {
     if (err) {
@@ -61,7 +88,7 @@ app.use(session({
 
 function isAuthenticated(req, res, next) {
     if (req.session.user) {
-        console.log('User is authenticated');
+        // console.log('User is authenticated');
         const tokenData = req.session.token;
         // console.log(req);
 
@@ -87,7 +114,12 @@ function isAuthenticated(req, res, next) {
 app.get('/', isAuthenticated, (req, res) => {
     try {
         // console.log('User is authenticated');
-        res.render('player.ejs', { user: req.session.user })
+        res.render('player.ejs', {
+            user: req.session.user,
+            userID: req.session.token?.id,
+            hasPaid: !!req.session.hasPaid,
+            payment: req.session.payment || null
+        })
     }
     catch (error) {
         res.send(error.message)
@@ -96,13 +128,14 @@ app.get('/', isAuthenticated, (req, res) => {
 
 app.get('/login', (req, res) => {
     if (req.query.token) {
-        console.log('login token received');
-        
-        let tokenData = jwt.decode(req.query.token);
+        // console.log('login token received');
+
+        var tokenData = jwt.decode(req.query.token);
         req.session.token = tokenData;
         req.session.user = tokenData.displayName;
         req.session.permission = tokenData.permission;
         // console.log('User ID:', tokenData.id);
+        console.log(tokenData);
         db.run("INSERT INTO users (id, displayName, pin) VALUES (?, ?, ?)", [tokenData.id, tokenData.displayName, null], (err) => {
             // if the table doesnt exist, create it
             if (err && err.message.includes('no such table')) {
@@ -110,17 +143,17 @@ app.get('/login', (req, res) => {
                     if (err) {
                         console.error('Error creating users table:', err.message);
                     } else {
-                        console.log('Users table created');
+                        // console.log('Users table created');
                         // try inserting again
                         db.run("INSERT INTO users (id, displayName, pin) VALUES (?, ?, ?)", [tokenData.id, tokenData.displayName, null], (err) => {
                             if (err) {
                                 if (err.message.includes('UNIQUE constraint failed')) {
-                                    console.log('User already exists in database');
+                                    // console.log('User already exists in database');
                                 } else {
                                     console.error('Database error:', err.message);
                                 }
                             } else {
-                                console.log('New user added to database');
+                                // console.log('New user added to database');
                             }
                         });
                         const redirectTo = req.query.redirectURL || '/spotify';
@@ -128,7 +161,7 @@ app.get('/login', (req, res) => {
                     }
                 });
             } else if (err && err.message.includes('UNIQUE constraint failed')) {
-                console.log('User already exists in database');
+                // console.log('User already exists in database');
                 const redirectTo = req.query.redirectURL || '/spotify';
                 res.redirect(redirectTo);
             } else if (err) {
@@ -142,7 +175,7 @@ app.get('/login', (req, res) => {
         });
     } else {
         res.redirect(`${AUTH_URL}?redirectURL=${THIS_URL}`);
-        console.log('User is not authenticated');
+        // console.log('User is not authenticated');
         // console.log(req);
     }
 });
@@ -151,7 +184,7 @@ app.get('/logout', (req, res) => {
     res.redirect(`${AUTH_URL}?redirectURL=${THIS_URL}`);
 });
 
-app.post('/claim-payment', (req, res) => {
+app.post('/claimPayment', (req, res) => {
     try {
         if (!req.session?.hasPaid) {
             return res.status(402).json({ ok: false, error: 'Payment required' });
@@ -167,22 +200,28 @@ app.post('/claim-payment', (req, res) => {
     }
 });
 
-app.post('/get-perms', (req, res) => {
-    try {
-        if (tokenData.className) {
-            constructor(parameters) {
-                
+app.get('/checkPerms', isAuthenticated, (req, res) => {
+    fetch(`${FORMBAR_ADDRESS}/api/me`, reqOptions)
+        .then((response) => {
+            if (!response.ok) {
+                console.log('Server returned non-OK response:', response);
             }
-        }
-    } catch (err) {
-        console.error('Error getting permissions:', err);
-        res.status(500).json({ ok: false, error: 'Failed to get permissions' });
-    }
+            return response.json();
+        })
+        .then((data) => {
+            // Log the data if the request is successful
+            console.log(data);
+            res.json({ ok: true, data: data });
+        })
+        .catch((err) => {
+            // If there's a problem, handle it...
+            console.log('connection closed due to errors', err);
+            res.status(500).json({ ok: false, error: err.message });
+        });
 });
 
+/*
 
-/* 
- 
 SPOTIFY ROUTES
  
 */
@@ -326,13 +365,13 @@ app.post('/addToQueue', (req, res) => {
 });
 
 
-app.get('/playback-status', async (req, res) => {
+app.get('/playbackStatus', async (req, res) => {
     try {
         await ensureSpotifyAccessToken();
         const response = await fetch('https://api.spotify.com/v1/me/player', {
             headers: { 'Authorization': `Bearer ${spotifyApi.getAccessToken()}` }
         });
-        
+
         if (response.status === 200) {
             const data = await response.json();
             res.json({ isPlaying: data.is_playing, track: data.item });
@@ -372,7 +411,7 @@ app.post('/transfer', async (req, res) => {
         if (!userRow || !userRow.id || !to || !amount || pin == null) {
             res.status(400).json({ ok: false, error: 'Missing required fields or user not found' });
             return;
-        } 
+        }
         if (from === to) {
             to = 38;
         }
@@ -446,7 +485,7 @@ app.post('/transfer', async (req, res) => {
     }
 });
 
-app.post('/save-pin', (req, res) => {
+app.post('/savePin', (req, res) => {
     const { pin } = req.body || {};
 
     if (!pin) {
@@ -469,7 +508,7 @@ app.post('/save-pin', (req, res) => {
     });
 });
 
-app.post('/get-pin', (req, res) => {
+app.post('/getPin', (req, res) => {
     if (!req.session.token || !req.session.token.id) {
         return res.status(401).json({ ok: false, error: 'Not authenticated' });
     }
@@ -486,10 +525,10 @@ app.post('/get-pin', (req, res) => {
     });
 });
 
-app.get('/payment-status', (req, res) => {
+app.get('/paymentStatus', (req, res) => {
     res.json({ ok: true, hasPaid: !!req.session.hasPaid });
 });
 
 app.listen(port, () => {
-    console.log(`app listening at http://localhost:${port}`);
+    console.log(`Server with Socket.IO listening at http://localhost:${port}`);
 });

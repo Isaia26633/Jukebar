@@ -171,18 +171,6 @@
 
     }
 
-    async function checkPerms() {
-        try {
-            const res = await fetch('/check-perms', { method: 'POST' });
-            const data = await res.json();
-            if (!data.ok) {
-                alert('Your teacher has disabled this feature.')
-            }
-        } catch (e) {
-            console.error('Failed to check permissions', e);
-        }
-    }
-
     async function searchSpotify() {
         const query = document.getElementById('searchInput').value;
         if (!query) return;
@@ -275,7 +263,7 @@
     }
 
     async function checkIfPlaying() {
-        const response = await fetch('/playback-status');
+        const response = await fetch('/playbackStatus');
         const data = await response.json();
         return data.isPlaying;
     }

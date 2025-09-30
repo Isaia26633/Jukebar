@@ -120,7 +120,7 @@
 
     async function getSavedPin() {
         try {
-            const res = await fetch('/get-pin', { method: 'POST' });
+            const res = await fetch('/getPin', { method: 'POST' });
             const data = await res.json();
             if (!data.ok) {
                 console.error('Failed to retrieve saved PIN', data.error);
@@ -150,7 +150,7 @@
         // Save PIN if checkbox is checked
         if (savePIN.checked) {
             try {
-                await post('/save-pin', { pin });
+                await post('/savePin', { pin });
                 console.log('PIN saved successfully');
             } catch (error) {
                 console.error('Failed to save PIN:', error);
