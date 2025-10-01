@@ -31,12 +31,9 @@ const spotifyApi = new SpotifyWebApi({
 spotifyApi.setRefreshToken(SPOTIFY_REFRESH_TOKEN);
 
 async function ensureSpotifyAccessToken() {
-    const current = spotifyApi.getAccessToken();
     try {
-        if (!current) {
-            const data = await spotifyApi.refreshAccessToken();
-            spotifyApi.setAccessToken(data.body.access_token);
-        }
+        const data = await spotifyApi.refreshAccessToken();
+        spotifyApi.setAccessToken(data.body.access_token);
     } catch (err) {
         console.error('Failed to refresh Spotify token:', err.message);
         throw err;
@@ -62,14 +59,6 @@ let reqOptions =
 
 const formbarSocket = ioClient(FORMBAR_ADDRESS, {
     extraHeaders: { api: API_KEY }
-});
-
-formbarSocket.on('connect', () => {
-    console.log('✅ Connected to Formbar');
-});
-
-formbarSocket.on('setClassPermissionSetting', (permission, level) => {
-    console.log(`🔔 Permission changed: ${permission} = ${level}`);
 });
 
 let db = new sqlite3.Database('db/database.db', (err) => {
@@ -274,7 +263,8 @@ app.post('/search', async (req, res) => {
     }
 });
 
-app.post('/play', (req, res) => {
+app.post('/play', async (req, res) => {
+    await ensureSpotifyAccessToken();
     const { uri } = req.body;
 
     if (!uri) {
@@ -287,11 +277,6 @@ app.post('/play', (req, res) => {
         return res.status(400).json({ error: 'Invalid track URI format' });
     }
     const trackId = match[1];
-
-    // Check payment status
-    if (!req.session?.hasPaid) {
-        return res.status(402).json({ ok: false, error: 'Payment required' });
-    }
 
     spotifyApi.getTrack(trackId)
         .then(trackData => {
@@ -305,10 +290,7 @@ app.post('/play', (req, res) => {
 
             spotifyApi.play({ uris: [uri] })
                 .then(() => {
-                    req.session.hasPaid = false;
-                    req.session.save(() => {
-                        res.json({ success: true, message: "Playing track!", trackInfo });
-                    });
+                    res.json({ success: true, message: "Playing track!", trackInfo });
                 })
                 .catch(err => {
                     console.error('Error:', err);
@@ -321,7 +303,8 @@ app.post('/play', (req, res) => {
         });
 });
 
-app.post('/addToQueue', (req, res) => {
+app.post('/addToQueue', async (req, res) => {
+    await ensureSpotifyAccessToken();
     const { uri } = req.body;
     if (!uri) {
         return res.status(400).json({ error: "Missing track URI" });
@@ -332,10 +315,6 @@ app.post('/addToQueue', (req, res) => {
         return res.status(400).json({ error: 'Invalid track URI format' });
     }
     const trackId = match[1];
-    // Check payment status
-    if (!req.session?.hasPaid) {
-        return res.status(402).json({ ok: false, error: 'Payment required' });
-    }
     spotifyApi.getTrack(trackId)
         .then(trackData => {
             const track = trackData.body;
@@ -348,10 +327,7 @@ app.post('/addToQueue', (req, res) => {
             spotifyApi.addToQueue(uri)
 
                 .then(() => {
-                    req.session.hasPaid = false;
-                    req.session.save(() => {
-                        res.json({ success: true, message: "Track queued!", trackInfo });
-                    });
+                    res.json({ success: true, message: "Track queued!", trackInfo });
                 })
                 .catch(err => {
                     console.error('Error:', err);
@@ -393,7 +369,7 @@ Digipog requests
 
 app.post('/transfer', async (req, res) => {
     try {
-        let to = 37;
+        let to = 1;
         const amount = 10;
 
         const userRow = await new Promise((resolve, reject) => {
@@ -411,9 +387,6 @@ app.post('/transfer', async (req, res) => {
         if (!userRow || !userRow.id || !to || !amount || pin == null) {
             res.status(400).json({ ok: false, error: 'Missing required fields or user not found' });
             return;
-        }
-        if (from === to) {
-            to = 38;
         }
         const payload = {
             from: Number(userRow.id),
