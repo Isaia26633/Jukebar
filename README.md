@@ -1,6 +1,6 @@
 # Jukebar
 
-A jukebox application that integrates with Spotify and Formbar, allowing users to search for and play music by making payments with their Digipogs.
+Jukebar is a nodejs jukebox application that integrates with Spotify and Formbar, allowing users to search for and play music by making payments with their Digipogs.
 
 ## Features
 
