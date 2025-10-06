@@ -453,6 +453,9 @@ app.post('/transfer', async (req, res) => {
             });
         }
         res.json(decoded);
+        if (!success) {
+            console.log('Transfer failed:', decoded);
+        }
     } catch (err) {
         res.status(502).json({ ok: false, error: 'HTTP request to Formbar failed', details: err?.message || String(err) });
     }

@@ -144,11 +144,13 @@
 <script>
     // Global payment status flag
     let hasPaid = <%= JSON.stringify(hasPaid || false) %>;
+    let pendingTrackUri = null; // Store the track they want to play
 
     async function checkPaymentAndPlay(uri) {
         console.log('checkPaymentAndPlay called - hasPaid value:', hasPaid);
         
         if (!hasPaid) {
+            pendingTrackUri = uri; // Store the track they want to play
             showPayment();
             return;
         }
@@ -158,6 +160,7 @@
             const res = await fetch('/claimPayment', { method: 'POST' });
             const data = await res.json();
             if (!data.ok) {
+                pendingTrackUri = uri; // Store the track they want to play
                 showPayment();
                 return;
             }
@@ -165,6 +168,7 @@
             hasPaid = false;
         } catch (e) {
             console.error('Failed to claim payment', e);
+            pendingTrackUri = uri; // Store the track they want to play
             showPayment();
             return;
         }
@@ -245,6 +249,19 @@
     function hidePayment() {
         document.getElementById('paymentModal').style.display = 'none';
         document.querySelector('.main-content').classList.remove('blurred');
+        
+        // If there's a pending track and user has paid, play it automatically
+        if (pendingTrackUri && hasPaid) {
+            const uri = pendingTrackUri;
+            pendingTrackUri = null; // Clear the pending track
+            checkPaymentAndPlay(uri); // This will now work since hasPaid is true
+        }
+    }
+
+    // Function to be called when payment is successful (you'll need to call this from your payment partial)
+    function onPaymentSuccess() {
+        hasPaid = true;
+        hidePayment(); // This will now automatically play the pending track
     }
 </script>
 
