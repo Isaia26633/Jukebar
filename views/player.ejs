@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>player</title>
+    <title>Jukebar</title>
     <style>
         .payment-modal {
             display: none;
@@ -144,13 +144,10 @@
 <script>
     // Global payment status flag
     let hasPaid = <%= JSON.stringify(hasPaid || false) %>;
-    // Global playback status flag
-    let isPlaying = false;
 
     async function checkPaymentAndPlay(uri) {
         console.log('checkPaymentAndPlay called - hasPaid value:', hasPaid);
         
-        // Always require payment for any song interaction
         if (!hasPaid) {
             showPayment();
             return;
@@ -174,13 +171,9 @@
     
         console.log('Payment verified, playing track:', uri);
         console.log('it working');
-        // Simple logic: if something is playing, add to queue, otherwise play
-        if (isPlaying) {
             addToQueue(uri);
-        } else {
-            playNewTrack(uri);
-        }
     }
+
     function addToQueue(uri) {
         fetch('/addToQueue', {
             method: 'POST',
@@ -199,27 +192,6 @@
         .catch(error => {
             console.log('oopsies!')
             console.error('Error adding track to queue:', error);
-            alert('Network error');
-        });
-    }
-    function playNewTrack(uri) {
-        fetch('/play', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ uri })
-        })
-        .then(response => {
-            if (response.ok) {
-                isPlaying = true;
-                alert('Now playing!');
-            } else {
-                return response.json().then(data => {
-                    alert('Failed to play: ' + (data.error || 'Unknown error'));
-                });
-            }
-        })
-        .catch(error => {
-            console.error('Error playing track:', error);
             alert('Network error');
         });
     }
