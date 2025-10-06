@@ -248,7 +248,9 @@ app.post('/search', async (req, res) => {
             album: {
                 name: t.album.name,
                 image: t.album.images?.[0]?.url || null
-            }
+            },
+            explicit: t.explicit,
+            duration_ms: t.duration_ms
         }));
         return res.json({
             ok: true,
@@ -369,7 +371,7 @@ Digipog requests
 
 app.post('/transfer', async (req, res) => {
     try {
-        let to = 37;
+        let to = 1;
         const amount = 50;
 
         const userRow = await new Promise((resolve, reject) => {

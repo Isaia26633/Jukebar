@@ -216,6 +216,13 @@
 
             if (data.tracks && data.tracks.items.length > 0) {
                 data.tracks.items.forEach(track => {
+                    if (track.explicit){
+                        console.log('found explicit track: ' + track.name);
+                        return;
+                    } else if (track.duration_ms > 420000){
+                        console.log('found long tracks: ' + track.name);
+                        return;
+                    }
                     const trackDiv = document.createElement('div');
                     trackDiv.style.marginBottom = '10px';
                     trackDiv.innerHTML = `
