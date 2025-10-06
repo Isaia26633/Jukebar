@@ -46,7 +46,7 @@ const PUBLIC_KEY = process.env.PUBLIC_KEY || '';
 const API_KEY = process.env.API_KEY || '';
 
 const AUTH_URL = `${FORMBAR_ADDRESS}/oauth`;
-const THIS_URL = 'http://172.16.3.100:5000/login';
+const THIS_URL = `http://172.16.3.100:${port}/login`;
 
 let reqOptions =
 {
@@ -263,43 +263,45 @@ app.post('/search', async (req, res) => {
     }
 });
 
-app.post('/play', async (req, res) => {
-    try {
-        await ensureSpotifyAccessToken();
-        const { uri } = req.body;
+// app.post('/play', async (req, res) => {
+//     await ensureSpotifyAccessToken();
+//     const { uri } = req.body;
 
-        if (!uri) {
-            return res.status(400).json({ error: "Missing track URI" });
-        }
+//     if (!uri) {
+//         return res.status(400).json({ error: "Missing track URI" });
+//     }
 
-        const trackIdPattern = /^spotify:track:([a-zA-Z0-9]{22})$/;
-        const match = uri.match(trackIdPattern);
-        if (!match) {
-            return res.status(400).json({ error: 'Invalid track URI format' });
-        }
-        const trackId = match[1];
+//     const trackIdPattern = /^spotify:track:([a-zA-Z0-9]{22})$/;
+//     const match = uri.match(trackIdPattern);
+//     if (!match) {
+//         return res.status(400).json({ error: 'Invalid track URI format' });
+//     }
+//     const trackId = match[1];
 
-        const trackData = await spotifyApi.getTrack(trackId);
-        const track = trackData.body;
-        const trackInfo = {
-            name: track.name,
-            artist: track.artists.map(a => a.name).join(', '),
-            uri: track.uri,
-            cover: track.album.images[0].url,
-        };
+//     spotifyApi.getTrack(trackId)
+//         .then(trackData => {
+//             const track = trackData.body;
+//             const trackInfo = {
+//                 name: track.name,
+//                 artist: track.artists.map(a => a.name).join(', '),
+//                 uri: track.uri,
+//                 cover: track.album.images[0].url,
+//             };
 
-        await spotifyApi.play({ uris: [uri] });
-        res.json({ success: true, message: "Playing track!", trackInfo });
-
-    } catch (err) {
-        console.error('Error in play route:', err);
-        if (err.message && err.message.includes('NO_ACTIVE_DEVICE')) {
-            res.status(500).json({ error: "No active Spotify device found. Please open Spotify and start playing something first." });
-        } else {
-            res.status(500).json({ error: "Playback failed, make sure Spotify is open" });
-        }
-    }
-});
+//             spotifyApi.play({ uris: [uri] })
+//                 .then(() => {
+//                     res.json({ success: true, message: "Playing track!", trackInfo });
+//                 })
+//                 .catch(err => {
+//                     console.error('Error:', err);
+//                     res.status(500).json({ error: "Playback failed, make sure Spotify is open" });
+//                 });
+//         })
+//         .catch(err => {
+//             console.error('Error fetching track details:', err);
+//             res.status(500).json({ error: `Error: ${err.message}` });
+//         });
+// });
 
 app.post('/addToQueue', async (req, res) => {
     await ensureSpotifyAccessToken();
@@ -367,8 +369,8 @@ Digipog requests
 
 app.post('/transfer', async (req, res) => {
     try {
-        let to = 1;
-        const amount = 10;
+        let to = 37;
+        const amount = 50;
 
         const userRow = await new Promise((resolve, reject) => {
             db.get("SELECT id FROM users WHERE id = ?", [req.session.token?.id], (err, row) => {
