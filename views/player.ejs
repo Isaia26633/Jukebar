@@ -133,6 +133,9 @@
             <button id="searchButton" onclick="searchSpotify()">Search</button>
             <div id="searchResults"></div>
         </div>
+        <div id="queue">
+            <h2>Queue</h2>
+        </div>
     </div>
     <div id="paymentModal" class="payment-modal">
         <div class="payment-content">
@@ -140,6 +143,7 @@
             <%- include('partials/pay') %>
         </div>
     </div>
+
 </body>
 <script>
     // Global payment status flag
@@ -148,13 +152,13 @@
 
     async function checkPaymentAndPlay(uri) {
         console.log('checkPaymentAndPlay called - hasPaid value:', hasPaid);
-        
+
         if (!hasPaid) {
             pendingTrackUri = uri; // Store the track they want to play
             showPayment();
             return;
         }
-    
+
         // Claim payment on the server
         try {
             const res = await fetch('/claimPayment', { method: 'POST' });
@@ -172,10 +176,10 @@
             showPayment();
             return;
         }
-    
+
         console.log('Payment verified, playing track:', uri);
         console.log('it working');
-            addToQueue(uri);
+        addToQueue(uri);
     }
 
     function addToQueue(uri) {
@@ -184,20 +188,20 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ uri })
         })
-        .then(response => {
-            if (response.ok) {
-                alert('Track added to queue!');
-            } else {
-                return response.json().then(data => {
-                    alert('Failed to add to queue: ' + (data.error || 'Unknown error'));
-                });
-            }
-        })
-        .catch(error => {
-            console.log('oopsies!')
-            console.error('Error adding track to queue:', error);
-            alert('Network error');
-        });
+            .then(response => {
+                if (response.ok) {
+                    alert('Track added to queue!');
+                } else {
+                    return response.json().then(data => {
+                        alert('Failed to add to queue: ' + (data.error || 'Unknown error'));
+                    });
+                }
+            })
+            .catch(error => {
+                console.log('oopsies!')
+                console.error('Error adding track to queue:', error);
+                alert('Network error');
+            });
     }
 
     async function searchSpotify() {
@@ -216,13 +220,6 @@
 
             if (data.tracks && data.tracks.items.length > 0) {
                 data.tracks.items.forEach(track => {
-                    if (track.explicit){
-                        console.log('found explicit track: ' + track.name);
-                        return;
-                    } else if (track.duration_ms > 420000){
-                        console.log('found long tracks: ' + track.name);
-                        return;
-                    }
                     const trackDiv = document.createElement('div');
                     trackDiv.style.marginBottom = '10px';
                     trackDiv.innerHTML = `
@@ -256,7 +253,7 @@
     function hidePayment() {
         document.getElementById('paymentModal').style.display = 'none';
         document.querySelector('.main-content').classList.remove('blurred');
-        
+
         // If there's a pending track and user has paid, play it automatically
         if (pendingTrackUri && hasPaid) {
             const uri = pendingTrackUri;

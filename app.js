@@ -252,6 +252,8 @@ app.post('/search', async (req, res) => {
             explicit: t.explicit,
             duration_ms: t.duration_ms
         }));
+        // filter explicit songs and songs longer than 7 minutes
+        simplified = simplified.filter(t => t.explicit === false && t.duration_ms < 420000);
         return res.json({
             ok: true,
             tracks: { items: simplified }
@@ -371,7 +373,7 @@ Digipog requests
 
 app.post('/transfer', async (req, res) => {
     try {
-        let to = 1;
+        let to = 37;
         const amount = 50;
 
         const userRow = await new Promise((resolve, reject) => {
