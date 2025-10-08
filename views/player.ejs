@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Jukebar</title>
+    <link rel="icon" href="/img/favicon.png">
     <style>
         .payment-modal {
             display: none;
@@ -161,6 +162,7 @@
             margin-right: 10px;
         }
     </style>
+
 </head>
 
 <body>
@@ -278,7 +280,7 @@
             console.error('Error searching Spotify:', error);
         }
     }
-    
+
     async function getQueue() {
         try {
             const response = await fetch('/getQueue', {
@@ -320,7 +322,7 @@
         hidePayment(); // This will now automatically play the pending track
     }
 
-    setInterval(getQueue, 7000); // Refresh queue every 7 seconds
+    // setInterval(getQueue, 7000); // Refresh queue every 7 seconds
 </script>
 
 </html>

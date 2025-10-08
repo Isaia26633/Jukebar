@@ -10,6 +10,7 @@ dotenv.config();
 app.set('view engine', 'ejs');
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(express.static('public'));
 const http = require('http');
 const { Server } = require('socket.io');
 const { io: ioClient } = require('socket.io-client');
@@ -274,8 +275,25 @@ app.get('/getQueue', async (req, res) => {
             headers: { 'Authorization': `Bearer ${spotifyApi.getAccessToken()}` }
         });
         if (response.status === 200) {
-            const data = await response.json();
-            res.json({ ok: true, queue: data });
+            const queueData = await response.json();
+            const items = queueData.queue || [];
+
+            let simplified = items.map(t => ({
+                id: t.id,
+                name: t.name,
+                artist: t.artists.map(a => a.name).join(', '),
+                uri: t.uri,
+                album: {
+                    name: t.album.name,
+                    image: t.album.images?.[0]?.url || null
+                },
+                explicit: t.explicit,
+                duration_ms: t.duration_ms
+            }));
+            res.json({
+                ok: true,
+                tracks: { items: simplified }
+            });
         } else {
             res.status(response.status).json({ ok: false, error: 'Failed to get queue' });
         }
