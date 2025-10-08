@@ -267,6 +267,24 @@ app.post('/search', async (req, res) => {
     }
 });
 
+app.get('/getQueue', async (req, res) => {
+    try {
+        await ensureSpotifyAccessToken();
+        const response = await fetch('https://api.spotify.com/v1/me/player/queue', {
+            headers: { 'Authorization': `Bearer ${spotifyApi.getAccessToken()}` }
+        });
+        if (response.status === 200) {
+            const data = await response.json();
+            res.json({ ok: true, queue: data });
+        } else {
+            res.status(response.status).json({ ok: false, error: 'Failed to get queue' });
+        }
+    } catch (error) {
+        console.error('Get queue error:', error);
+        res.status(500).json({ ok: false, error: 'Failed to get queue', details: error.message });
+    }
+});
+
 // app.post('/play', async (req, res) => {
 //     await ensureSpotifyAccessToken();
 //     const { uri } = req.body;
