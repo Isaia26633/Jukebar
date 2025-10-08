@@ -240,7 +240,7 @@ app.post('/search', async (req, res) => {
         const searchData = await spotifyApi.searchTracks(query, { limit: 25 });
         const items = searchData.body.tracks.items || [];
 
-        const simplified = items.map(t => ({
+        let simplified = items.map(t => ({
             id: t.id,
             name: t.name,
             artist: t.artists.map(a => a.name).join(', '),
@@ -373,7 +373,7 @@ Digipog requests
 
 app.post('/transfer', async (req, res) => {
     try {
-        let to = 37;
+        let to = 1;
         const amount = 50;
 
         const userRow = await new Promise((resolve, reject) => {
