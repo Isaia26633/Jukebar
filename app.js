@@ -409,7 +409,7 @@ Digipog requests
 
 app.post('/transfer', async (req, res) => {
     try {
-        let to = 1;
+        let to = 37;
         const amount = 50;
 
         const userRow = await new Promise((resolve, reject) => {
@@ -446,41 +446,8 @@ app.post('/transfer', async (req, res) => {
         const responseJson = await transferResult.json();
         console.log('Formbar response:', responseJson);
 
-        const { token } = responseJson;
-        if (!token) {
-            console.log('No token in response, full response:', responseJson);
-            res.status(transferResult.status).json({ ok: false, error: 'Invalid response (no token)', fullResponse: responseJson });
-            return;
-        }
-
-        // Ensure the token is from Formbar
-        // If it's not, then this will error
-        let decoded = null;
-        try {
-            if (PUBLIC_KEY) {
-                decoded = jwt.verify(token, PUBLIC_KEY, { algorithms: ['RS256'] });
-            } else {
-                // For development: if no PUBLIC_KEY, just decode without verification
-                console.warn('PUBLIC_KEY not set - using unverified token decode for development');
-                decoded = jwt.decode(token);
-            }
-        } catch (err) {
-            console.error('JWT verification error:', err.message);
-            res.status(200).json({ ok: false, error: 'JWT verify failed', token, details: err.message });
-            return;
-        }
-
-        console.log('Decoded token:', decoded)
-        // Only allow success if there's an explicit success indicator AND no error
-        const success = decoded && !decoded.error && (
-            decoded.ok === true ||
-            decoded.success === true ||
-            decoded.status === 'success'
-        );
-
-        console.log('Success evaluation:', success);
-
-        if (success) {
+        // Check if the transfer was successful based on the response
+        if (transferResult.ok && responseJson) {
             req.session.hasPaid = true;
             req.session.payment = {
                 from: Number(userRow.id),
@@ -489,12 +456,15 @@ app.post('/transfer', async (req, res) => {
                 at: Date.now()
             };
             return req.session.save(() => {
-                res.json({ ok: true, ...decoded });
+                res.json({ ok: true, message: 'Transfer successful', response: responseJson });
             });
-        }
-        res.json(decoded);
-        if (!success) {
-            console.log('Transfer failed:', decoded);
+        } else {
+            console.log('Transfer failed:', responseJson);
+            res.status(transferResult.status || 400).json({ 
+                ok: false, 
+                error: 'Transfer failed', 
+                details: responseJson 
+            });
         }
     } catch (err) {
         res.status(502).json({ ok: false, error: 'HTTP request to Formbar failed', details: err?.message || String(err) });

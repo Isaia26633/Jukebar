@@ -76,7 +76,7 @@
             box-sizing: border-box;
         }
 
-        #queue {
+        #songStats {
             background: rgba(25, 20, 20, 0.85);
             border-radius: 20px;
             flex: 1;
@@ -176,8 +176,15 @@
                 <button id="searchButton" onclick="searchSpotify()">Search</button>
                 <div id="searchResults"></div>
             </div>
-            <div id="queue">
-                <h2>Queue</h2>
+            <div id="songStats">
+                <h2>Now Playing:</h2>
+                <hr>
+                <div id="nowPlaying">
+                </div>
+                <h2>Up Next:</h2>
+                <hr>
+                <div id="queue">
+                </div>
             </div>
         </div>
     </div>
@@ -281,21 +288,49 @@
         }
     }
 
-    async function getQueue() {
+        async function getQueue() {
         try {
             const response = await fetch('/getQueue', {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const data = await response.json();
+            if (data.ok) {
+                console.log('Queue data:', data.tracks.items);
+                const queueDiv = document.getElementById('queue');
+                queueDiv.innerHTML = '';
+                data.tracks.items.forEach((item, index) => {
+                    const itemDiv = document.createElement('div');
+                    itemDiv.style.marginBottom = '10px';
+                    itemDiv.innerHTML = `
+                        <img src="${item.album.image}" alt="${item.album.name}" id="album-cover" />
+                        <strong>${item.name}</strong> by ${item.artist}
+                    `;
+                    queueDiv.appendChild(itemDiv);
+                });
+            } else {
+                console.error('Failed to get queue:', data.error);
+            }
+        } catch (error) {
+            console.error('Error fetching queue:', error);
+        }
+    }
+
+    async function currentlyPlaying(){
+        try {
+            const response = await fetch('/currentlyPlaying', {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(params)
             });
             const data = await response.json();
             if (data.ok) {
-                console.log('Queue data:', data.queue);
+                console.log('Currently playing data:', data);
             } else {
-                console.error('Failed to get queue:', data.error);
+                console.error('Failed to get currently playing:', data.error);
             }
         } catch (error) {
-            console.error('Error fetching queue:', error);
+            console.error('Error fetching currently playing:', error);
         }
     }
 
