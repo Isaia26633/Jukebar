@@ -17,8 +17,14 @@
         </p>
         <div class="container">
             <div id="spotifyPlayer">
-                <input type="text" id="searchInput" placeholder="Search for a song, artist, or album" />
-                <button id="searchButton" onclick="searchSpotify()">Search</button>
+                <form id="searchForm" onsubmit="handleSearchSubmit(event)">
+                    <div class="search-container">
+                        <input type="text" id="searchInput" placeholder="Search for a song, artist, or album" required>
+                        <button type="submit" id="searchButton">
+                            <img src="/img/search.png" alt="Search" class="search-icon">
+                        </button>
+                    </div>
+                </form>
                 <div id="searchResults"></div>
             </div>
             <div id="songStats">
@@ -45,6 +51,11 @@
     // Global payment status flag
     let hasPaid = <%= JSON.stringify(hasPaid || false) %>;
     let pendingTrackUri = null; // Store the track they want to play
+
+    function handleSearchSubmit(event) {
+        event.preventDefault();
+        searchSpotify();
+    }
 
     async function checkPaymentAndPlay(uri) {
         console.log('checkPaymentAndPlay called - hasPaid value:', hasPaid);

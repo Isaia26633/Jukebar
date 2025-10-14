@@ -93,8 +93,6 @@ function isAuthenticated(req, res, next) {
         } catch (err) {
             req.session.destroy();
             res.redirect('/login');
-            // console.log('User is not authenticated');
-            // console.log(req);
         }
     } else {
         res.redirect('/login');
@@ -302,46 +300,6 @@ app.get('/getQueue', async (req, res) => {
         res.status(500).json({ ok: false, error: 'Failed to get queue', details: error.message });
     }
 });
-
-// app.post('/play', async (req, res) => {
-//     await ensureSpotifyAccessToken();
-//     const { uri } = req.body;
-
-//     if (!uri) {
-//         return res.status(400).json({ error: "Missing track URI" });
-//     }
-
-//     const trackIdPattern = /^spotify:track:([a-zA-Z0-9]{22})$/;
-//     const match = uri.match(trackIdPattern);
-//     if (!match) {
-//         return res.status(400).json({ error: 'Invalid track URI format' });
-//     }
-//     const trackId = match[1];
-
-//     spotifyApi.getTrack(trackId)
-//         .then(trackData => {
-//             const track = trackData.body;
-//             const trackInfo = {
-//                 name: track.name,
-//                 artist: track.artists.map(a => a.name).join(', '),
-//                 uri: track.uri,
-//                 cover: track.album.images[0].url,
-//             };
-
-//             spotifyApi.play({ uris: [uri] })
-//                 .then(() => {
-//                     res.json({ success: true, message: "Playing track!", trackInfo });
-//                 })
-//                 .catch(err => {
-//                     console.error('Error:', err);
-//                     res.status(500).json({ error: "Playback failed, make sure Spotify is open" });
-//                 });
-//         })
-//         .catch(err => {
-//             console.error('Error fetching track details:', err);
-//             res.status(500).json({ error: `Error: ${err.message}` });
-//         });
-// });
 
 app.post('/addToQueue', async (req, res) => {
     await ensureSpotifyAccessToken();
