@@ -47,7 +47,7 @@ const PUBLIC_KEY = process.env.PUBLIC_KEY || '';
 const API_KEY = process.env.API_KEY || '';
 
 const AUTH_URL = `${FORMBAR_ADDRESS}/oauth`;
-const THIS_URL = `http://172.16.3.100:${port}/login`;
+const THIS_URL = `http://localhost:${port}/login`;
 
 let reqOptions =
 {
@@ -388,7 +388,7 @@ Digipog requests
 
 app.post('/transfer', async (req, res) => {
     try {
-        let to = 37;
+        let to = 1;
         const amount = 50;
 
         const userRow = await new Promise((resolve, reject) => {
@@ -403,6 +403,10 @@ app.post('/transfer', async (req, res) => {
 
         const { pin, reason } = req.body || {};
 
+        console.log('Received PIN:', pin, 'Type:', typeof pin);
+        console.log('User session ID:', req.session.token?.id);
+        console.log('User row from DB:', userRow);
+
         if (!userRow || !userRow.id || !to || !amount || pin == null) {
             res.status(400).json({ ok: false, error: 'Missing required fields or user not found' });
             return;
@@ -411,11 +415,11 @@ app.post('/transfer', async (req, res) => {
             from: Number(userRow.id),
             to: Number(to),
             amount: Number(amount),
-            pin: Number(pin),
+            pin: Number(pin), // Back to integer as Formbar expects
             reason: String(reason || 'Transfer'),
         };
 
-        console.log('Transfer payload:', payload);
+        console.log('Transfer payload being sent to Formbar:', payload);
         const transferResult = await fetch(`${FORMBAR_ADDRESS}/api/digipogs/transfer`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -439,9 +443,16 @@ app.post('/transfer', async (req, res) => {
             });
         } else {
             console.log('Transfer failed:', responseJson);
+            
+            // Extract the specific error message from Formbar response
+            let specificError = 'Transfer failed';
+            if (responseJson && responseJson.message) {
+                specificError = responseJson.message;
+            }
+            
             res.status(transferResult.status || 400).json({
                 ok: false,
-                error: 'Transfer failed',
+                error: specificError, // Use the specific error instead of generic message
                 details: responseJson
             });
         }

@@ -187,7 +187,11 @@
                 alert('Transfer successful!');
                 return;
             } else {
-                alert('Transfer failed: ' + (result.error || result.message || 'Unknown error'));
+                // Get the error message in order of preference
+                let errorMessage = result.error || result.message || 'Unknown error';
+                
+                console.log('Final error message:', errorMessage);
+                alert('Transfer failed: ' + errorMessage);
                 console.error('Transfer failed:', result);
             }
         } catch (error) {

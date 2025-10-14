@@ -71,7 +71,7 @@
             const res = await fetch('/claimPayment', { method: 'POST' });
             const data = await res.json();
             if (!data.ok) {
-                pendingTrackUri = uri; // Store the track they want to play
+                pendingTrackUri = uri;
                 showPayment();
                 return;
             }
@@ -79,7 +79,7 @@
             hasPaid = false;
         } catch (e) {
             console.error('Failed to claim payment', e);
-            pendingTrackUri = uri; // Store the track they want to play
+            pendingTrackUri = uri;
             showPayment();
             return;
         }
@@ -100,7 +100,7 @@
                     alert('Track added to queue!');
                 } else {
                     return response.json().then(data => {
-                        alert('Failed to add to queue: ' + (data.error || 'Unknown error'));
+                        alert('Failed to add to queue: ' + (data.error || data.message || 'Unknown error'));
                     });
                 }
             })
