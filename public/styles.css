@@ -1,0 +1,350 @@
+.payment-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+}
+
+.payment-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: transparent;
+    padding: 20px;
+    border-radius: 10px;
+    max-width: 500px;
+    width: 90%;
+}
+
+body {
+    background: linear-gradient(135deg, #1db954 0%, #191414 100%);
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    color: #fff;
+    margin: 0;
+    height: 100vh;
+    overflow: hidden;
+}
+
+h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-top: 40px;
+    text-align: center;
+    letter-spacing: 1px;
+}
+
+.container {
+    display: flex;
+    max-width: 1400px;
+    /* Increased from 1200px */
+    margin: 40px auto;
+    gap: 30px;
+    /* Increased gap */
+    padding: 0 20px;
+    height: calc(100vh - 200px);
+    /* Fixed height for the container */
+}
+
+#spotifyPlayer {
+    background: rgba(25, 20, 20, 0.85);
+    border-radius: 20px;
+    flex: 1;
+    padding: 30px 40px;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    order: 1;
+    height: 100%;
+    /* Fixed height */
+    overflow-y: auto;
+    /* Allow scrolling for search results */
+    box-sizing: border-box;
+}
+
+#songStats {
+    background: rgba(25, 20, 20, 0.85);
+    border-radius: 20px;
+    flex: 1;
+    padding: 30px 40px;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    order: 2;
+    text-align: center;
+    height: 100%;
+    /* Fixed height */
+    overflow: hidden;
+    /* No scrolling on the container */
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+}
+
+#songStats h2 {
+    text-align: center;
+    margin: 10px 0;
+}
+
+#songStats hr {
+    width: 100%;
+    border: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.3);
+    margin: 10px 0 20px 0;
+}
+
+#queue {
+    flex: 1;
+    overflow-y: auto;
+    padding-right: 15px;
+    margin-right: -15px;
+}
+
+#currentlyPlaying {
+    margin-bottom: 20px;
+    min-height: 80px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+#currentlyPlaying .queue-item {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+#currentlyPlaying .queue-item:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.current-item {
+    display: flex;
+    align-items: center;
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 12px;
+    transition: background 0.2s ease;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.current-item:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.current-item-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.current-item-title {
+    font-weight: 600;
+    font-size: 1rem;
+    margin: 0 0 4px 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.current-item-artist {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.9rem;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#searchResults {
+    width: 100%;
+    margin-top: 20px;
+    max-height: calc(100% - 120px);
+    overflow-y: auto;
+    padding-right: 15px;
+    margin-right: -15px;
+}
+
+button {
+    background: #1db954;
+    color: #fff;
+    border: none;
+    border-radius: 50px;
+    padding: 12px 32px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+    margin: 10px auto;
+    display: block;
+}
+
+button:hover {
+    background: #1ed760;
+}
+
+p {
+    text-align: center;
+    font-size: 1.1rem;
+    margin-bottom: 0;
+}
+
+#hide-payment {
+    background: #1db954;
+    border: none;
+    color: #fff;
+    font-size: 1.5rem;
+    cursor: pointer;
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: background 0.2s;
+}
+
+#hide-payment:hover {
+    background: #1ed760;
+}
+
+.main-content {
+    transition: filter 0s ease;
+}
+
+.main-content.blurred {
+    filter: blur(5px);
+}
+
+.album-cover {
+    width: 64px;
+    height: 64px;
+    border-radius: 8px;
+    vertical-align: middle;
+    margin-right: 15px;
+    flex-shrink: 0;
+}
+
+.queue-item {
+    display: flex;
+    align-items: center;
+    /* background: rgba(255, 255, 255, 0.1); */
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 12px;
+    transition: background 0.2s ease;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.queue-item:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.queue-item-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.queue-item-title {
+    font-weight: 600;
+    font-size: 1rem;
+    margin: 0 0 4px 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.queue-item-artist {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.9rem;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.search-result-item {
+    display: flex;
+    align-items: center;
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 12px;
+    transition: background 0.2s ease;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.search-result-item:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.search-result-content {
+    flex: 1;
+    min-width: 0;
+    margin-right: 15px;
+}
+
+.search-result-title {
+    font-weight: 600;
+    font-size: 1rem;
+    margin: 0 0 4px 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.search-result-artist {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.9rem;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.play-button {
+    background: #1db954;
+    color: #fff;
+    border: none;
+    border-radius: 25px;
+    padding: 8px 16px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+    flex-shrink: 0;
+}
+
+.play-button:hover {
+    background: #1ed760;
+}
+
+/* Custom Scrollbar Styles */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(29, 185, 84, 0.8);
+    border-radius: 10px;
+    transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(29, 185, 84, 1);
+}
+
+/* For Firefox */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(29, 185, 84, 0.8) rgba(255, 255, 255, 0.1);
+}

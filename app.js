@@ -10,6 +10,7 @@ dotenv.config();
 app.set('view engine', 'ejs');
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(express.static('public'));
 const http = require('http');
 const { Server } = require('socket.io');
 const { io: ioClient } = require('socket.io-client');
@@ -240,7 +241,7 @@ app.post('/search', async (req, res) => {
         const searchData = await spotifyApi.searchTracks(query, { limit: 25 });
         const items = searchData.body.tracks.items || [];
 
-        const simplified = items.map(t => ({
+        let simplified = items.map(t => ({
             id: t.id,
             name: t.name,
             artist: t.artists.map(a => a.name).join(', '),
@@ -252,6 +253,8 @@ app.post('/search', async (req, res) => {
             explicit: t.explicit,
             duration_ms: t.duration_ms
         }));
+        // filter explicit songs and songs longer than 7 minutes
+        simplified = simplified.filter(t => t.explicit === false && t.duration_ms < 420000);
         return res.json({
             ok: true,
             tracks: { items: simplified }
@@ -262,6 +265,41 @@ app.post('/search', async (req, res) => {
             return res.status(401).json({ ok: false, error: 'Spotify auth failed' });
         }
         res.status(500).json({ ok: false, error: 'Internal search error' });
+    }
+});
+
+app.get('/getQueue', async (req, res) => {
+    try {
+        await ensureSpotifyAccessToken();
+        const response = await fetch('https://api.spotify.com/v1/me/player/queue', {
+            headers: { 'Authorization': `Bearer ${spotifyApi.getAccessToken()}` }
+        });
+        if (response.status === 200) {
+            const queueData = await response.json();
+            const items = queueData.queue || [];
+
+            let simplified = items.map(t => ({
+                id: t.id,
+                name: t.name,
+                artist: t.artists.map(a => a.name).join(', '),
+                uri: t.uri,
+                album: {
+                    name: t.album.name,
+                    image: t.album.images?.[0]?.url || null
+                },
+                explicit: t.explicit,
+                duration_ms: t.duration_ms
+            }));
+            res.json({
+                ok: true,
+                tracks: { items: simplified }
+            });
+        } else {
+            res.status(response.status).json({ ok: false, error: 'Failed to get queue' });
+        }
+    } catch (error) {
+        console.error('Get queue error:', error);
+        res.status(500).json({ ok: false, error: 'Failed to get queue', details: error.message });
     }
 });
 
@@ -343,22 +381,44 @@ app.post('/addToQueue', async (req, res) => {
 });
 
 
-app.get('/playbackStatus', async (req, res) => {
+app.get('/currentlyPlaying', async (req, res) => {
     try {
         await ensureSpotifyAccessToken();
-        const response = await fetch('https://api.spotify.com/v1/me/player', {
+        const response = await fetch('https://api.spotify.com/v1/me/player/currently-playing', {
             headers: { 'Authorization': `Bearer ${spotifyApi.getAccessToken()}` }
         });
-
         if (response.status === 200) {
             const data = await response.json();
-            res.json({ isPlaying: data.is_playing, track: data.item });
+
+            // Check if something is playing
+            if (!data || !data.item) {
+                return res.json({ ok: true, tracks: { items: [] } });
+            }
+            const track = data.item;
+            const simplified = ({
+                id: track.id,
+                name: track.name,
+                artist: track.artists.map(a => a.name).join(', '),
+                uri: track.uri,
+                album: {
+                    name: track.album.name,
+                    image: track.album.images?.[0]?.url || null
+                },
+                explicit: track.explicit,
+                duration_ms: track.duration_ms
+            });
+            res.json({
+                ok: true,
+                tracks: { items: [simplified] }
+            });
+        } else if (response.status === 204) {
+            res.json({ ok: true, tracks: { items: [] } });
         } else {
-            res.json({ isPlaying: false });
+            res.status(response.status).json({ ok: false, error: 'Failed to get queue' });
         }
     } catch (error) {
-        console.error('Playback status error:', error);
-        res.status(500).json({ error: 'Failed to get playback state', details: error.message });
+        console.error('Get queue error:', error);
+        res.status(500).json({ ok: false, error: 'Failed to get queue', details: error.message });
     }
 });
 
@@ -368,10 +428,9 @@ Digipog requests
  
 */
 
-
 app.post('/transfer', async (req, res) => {
     try {
-        let to = 1;
+        let to = 37;
         const amount = 50;
 
         const userRow = await new Promise((resolve, reject) => {
@@ -408,41 +467,8 @@ app.post('/transfer', async (req, res) => {
         const responseJson = await transferResult.json();
         console.log('Formbar response:', responseJson);
 
-        const { token } = responseJson;
-        if (!token) {
-            console.log('No token in response, full response:', responseJson);
-            res.status(transferResult.status).json({ ok: false, error: 'Invalid response (no token)', fullResponse: responseJson });
-            return;
-        }
-
-        // Ensure the token is from Formbar
-        // If it's not, then this will error
-        let decoded = null;
-        try {
-            if (PUBLIC_KEY) {
-                decoded = jwt.verify(token, PUBLIC_KEY, { algorithms: ['RS256'] });
-            } else {
-                // For development: if no PUBLIC_KEY, just decode without verification
-                console.warn('PUBLIC_KEY not set - using unverified token decode for development');
-                decoded = jwt.decode(token);
-            }
-        } catch (err) {
-            console.error('JWT verification error:', err.message);
-            res.status(200).json({ ok: false, error: 'JWT verify failed', token, details: err.message });
-            return;
-        }
-
-        console.log('Decoded token:', decoded)
-        // Only allow success if there's an explicit success indicator AND no error
-        const success = decoded && !decoded.error && (
-            decoded.ok === true ||
-            decoded.success === true ||
-            decoded.status === 'success'
-        );
-
-        console.log('Success evaluation:', success);
-
-        if (success) {
+        // Check if the transfer was successful based on the response
+        if (transferResult.ok && responseJson) {
             req.session.hasPaid = true;
             req.session.payment = {
                 from: Number(userRow.id),
@@ -451,12 +477,15 @@ app.post('/transfer', async (req, res) => {
                 at: Date.now()
             };
             return req.session.save(() => {
-                res.json({ ok: true, ...decoded });
+                res.json({ ok: true, message: 'Transfer successful', response: responseJson });
             });
-        }
-        res.json(decoded);
-        if (!success) {
-            console.log('Transfer failed:', decoded);
+        } else {
+            console.log('Transfer failed:', responseJson);
+            res.status(transferResult.status || 400).json({
+                ok: false,
+                error: 'Transfer failed',
+                details: responseJson
+            });
         }
     } catch (err) {
         res.status(502).json({ ok: false, error: 'HTTP request to Formbar failed', details: err?.message || String(err) });
