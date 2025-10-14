@@ -380,6 +380,17 @@ app.get('/currentlyPlaying', async (req, res) => {
     }
 });
 
+app.post('/skip', async (req, res) => {
+    try {
+        await ensureSpotifyAccessToken();
+        await spotifyApi.skipToNext();
+        res.json({ ok: true });
+    } catch (error) {
+        console.error('Skip error:', error);
+        res.status(500).json({ ok: false, error: 'Failed to skip', details: error.message });
+    }
+});
+
 /*
  
 Digipog requests
@@ -388,9 +399,8 @@ Digipog requests
 
 app.post('/transfer', async (req, res) => {
     try {
-        let to = 1;
+        let to = 37;
         const amount = 50;
-
         const userRow = await new Promise((resolve, reject) => {
             db.get("SELECT id FROM users WHERE id = ?", [req.session.token?.id], (err, row) => {
                 if (err) {

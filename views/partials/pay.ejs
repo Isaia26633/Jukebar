@@ -97,7 +97,8 @@
                 transactions.</label>
         </div>
         <div class="actions"><button class="primary" onclick="
-        if (confirm('This transfer will cost 50 Digipogs. Do you want to proceed?')) {
+        let cost = (typeof pendingAction !== 'undefined' && pendingAction === 'skip') ? 50 : 50;
+        if (confirm(`This transfer will cost ${cost} Digipogs. Do you want to proceed?`)) {
             doTransfer();
         }
     ">Send Transfer</button></div>
@@ -159,7 +160,17 @@
             }
         }
 
-        const reason = 'Jukebar Payment';
+        let reason = 'Jukebar Payment';
+
+        if (pendingAction === 'play') {
+            reason += ' - Play Track';
+        } else if (pendingAction === 'skip') {
+            reason += ' - Skip Track';
+        } else {
+            console.error('Unknown pending action:', pendingAction);
+            alert('Unknown action. Please try again.');
+            return;
+        }
 
         // Validate required fields
         if (!pin) {
@@ -168,7 +179,7 @@
         }
 
         try {
-            const result = await post('/transfer', { pin, reason });
+            const result = await post('/transfer', { pin, reason});
             console.log('Transfer result:', result); // Debug log
 
             // Check for success in different possible formats

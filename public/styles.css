@@ -125,7 +125,7 @@ h1 {
     align-items: center;
     border-radius: 12px;
     padding: 12px;
-    margin-bottom: 12px;
+    /* margin-bottom: 6px; */
     transition: background 0.2s ease;
     border: 1px solid rgba(255, 255, 255, 0.15);
 }
@@ -412,4 +412,22 @@ p {
 * {
     scrollbar-width: thin;
     scrollbar-color: rgba(29, 185, 84, 0.8) rgba(255, 255, 255, 0.1);
+}
+
+/* Skip Button Styles */
+.skip-button {
+    background: #1db954;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.85em;
+    cursor: pointer;
+    transition: background 0.2s;
+    float: right;
+    margin: 10px 0;
+}
+
+.skip-button:hover {
+    background: #1ed760;
 }

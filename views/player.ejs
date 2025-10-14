@@ -32,6 +32,9 @@
                 <hr>
                 <div id="currentlyPlaying">
                 </div>
+                <div>
+                    <button onclick="checkPaymentAndSkip()" class="skip-button">Skip</button>
+                </div>
                 <h2>Up Next:</h2>
                 <hr>
                 <div id="queue">
@@ -50,7 +53,8 @@
 <script>
     // Global payment status flag
     let hasPaid = <%= JSON.stringify(hasPaid || false) %>;
-    let pendingTrackUri = null; // Store the track they want to play
+    let pendingTrackUri = null;
+    let pendingAction = null;
 
     function handleSearchSubmit(event) {
         event.preventDefault();
@@ -61,7 +65,8 @@
         console.log('checkPaymentAndPlay called - hasPaid value:', hasPaid);
 
         if (!hasPaid) {
-            pendingTrackUri = uri; // Store the track they want to play
+            pendingTrackUri = uri;
+            pendingAction = 'play';
             showPayment();
             return;
         }
@@ -87,6 +92,56 @@
         console.log('Payment verified, playing track:', uri);
         console.log('it working');
         addToQueue(uri);
+    }
+
+    async function checkPaymentAndSkip() {
+        console.log('checkPaymentAndSkip called - hasPaid value:', hasPaid);
+        currentlyPlayingUri = `spotify:track:${currentlyPlayingUri}`;
+        if (!hasPaid) {
+            pendingTrackUri = currentlyPlayingUri;
+            pendingAction = 'skip';
+            showPayment();
+            return;
+        }
+
+        // Claim payment on the server
+        try {
+            const res = await fetch('/claimPayment', { method: 'POST' });
+            const data = await res.json();
+            if (!data.ok) {
+                pendingTrackUri;
+                showPayment();
+                return;
+            }
+            // Reset payment after claiming
+            hasPaid = false;
+        } catch (e) {
+            console.error('Failed to claim payment', e);
+            pendingTrackUri = currentlyPlayingUri;
+            pendingAction = 'skip';
+            showPayment();
+            return;
+        }
+
+        console.log('Payment verified, skipping track:', currentlyPlayingUri);
+        console.log('it working');
+        skip(currentlyPlayingUri);
+    }
+
+    async function skip(uri) {
+        try {
+            const response = await fetch('/skip', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ uri })
+            });
+            if (!response.ok) {
+                throw new Error('Failed to skip track');
+            }
+        } catch (error) {
+            console.error('Error skipping track:', error);
+            alert('Network error');
+        }
     }
 
     function addToQueue(uri) {
@@ -200,6 +255,7 @@
                         </div>
                     `;
                     CurrentDiv.appendChild(itemDiv);
+                    currentlyPlayingUri = item.id
                 });
             } else {
                 console.error('Failed to get current track:', data.error);
@@ -218,22 +274,27 @@
         document.getElementById('paymentModal').style.display = 'none';
         document.querySelector('.main-content').classList.remove('blurred');
 
-        // If there's a pending track and user has paid, play it automatically
-        if (pendingTrackUri && hasPaid) {
-            const uri = pendingTrackUri;
-            pendingTrackUri = null; // Clear the pending track
-            checkPaymentAndPlay(uri); // This will now work since hasPaid is true
+        // Handle pending actions after payment
+        if (hasPaid && pendingAction) {
+            if (pendingAction === 'play' && pendingTrackUri) {
+                const uri = pendingTrackUri;
+                pendingTrackUri = null;
+                pendingAction = null;
+                checkPaymentAndPlay(uri);
+            } else if (pendingAction === 'skip') {
+                pendingAction = null;
+                checkPaymentAndSkip();
+            }
         }
     }
 
-    // Function to be called when payment is successful (you'll need to call this from your payment partial)
     function onPaymentSuccess() {
         hasPaid = true;
-        hidePayment(); // This will now automatically play the pending track
+        hidePayment();
     }
 
-    setInterval(getQueue, 7000); // Refresh queue every 7 seconds
-    setInterval(currentlyPlaying, 7000); // Refresh currently playing every 7 seconds
+    setInterval(getQueue, 7000);
+    setInterval(currentlyPlaying, 7000);
 
 </script>
 
