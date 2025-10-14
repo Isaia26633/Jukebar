@@ -6,166 +6,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Jukebar</title>
     <link rel="icon" href="/img/favicon.png">
-    <style>
-        .payment-modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            z-index: 1000;
-        }
-
-        .payment-content {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: transparent;
-            padding: 20px;
-            border-radius: 10px;
-            max-width: 500px;
-            width: 90%;
-        }
-
-        body {
-            background: linear-gradient(135deg, #1db954 0%, #191414 100%);
-            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-            color: #fff;
-            margin: 0;
-            height: 100vh;
-            /* overflow: hidden; */
-        }
-
-        h1 {
-            font-size: 2rem;
-            font-weight: 700;
-            margin-top: 40px;
-            text-align: center;
-            letter-spacing: 1px;
-        }
-
-        .container {
-            display: flex;
-            max-width: 1400px;
-            /* Increased from 1200px */
-            margin: 40px auto;
-            gap: 30px;
-            /* Increased gap */
-            padding: 0 20px;
-            height: calc(100vh - 200px);
-            /* Fixed height for the container */
-        }
-
-        #spotifyPlayer {
-            background: rgba(25, 20, 20, 0.85);
-            border-radius: 20px;
-            flex: 1;
-            padding: 30px 40px;
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            order: 1;
-            height: 100%;
-            /* Fixed height */
-            overflow-y: auto;
-            /* Allow scrolling for search results */
-            box-sizing: border-box;
-        }
-
-        #songStats {
-            background: rgba(25, 20, 20, 0.85);
-            border-radius: 20px;
-            flex: 1;
-            padding: 30px 40px;
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-            order: 2;
-            text-align: center;
-            align-items: center;
-            height: 100%;
-            /* Fixed height */
-            overflow-y: auto;
-            /* Allow scrolling for queue items */
-            box-sizing: border-box;
-        }
-
-        #searchResults {
-            width: 100%;
-            margin-top: 20px;
-            max-height: calc(100% - 120px);
-            overflow-y: auto;
-        }
-
-        button {
-            background: #1db954;
-            color: #fff;
-            border: none;
-            border-radius: 50px;
-            padding: 12px 32px;
-            font-size: 1.1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.2s;
-            margin: 10px auto;
-            display: block;
-        }
-
-        button:hover {
-            background: #1ed760;
-        }
-
-        p {
-            text-align: center;
-            font-size: 1.1rem;
-            margin-bottom: 0;
-        }
-
-        #hide-payment {
-            background: #1db954;
-            border: none;
-            color: #fff;
-            font-size: 1.5rem;
-            cursor: pointer;
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 0;
-            transition: background 0.2s;
-        }
-
-        #hide-payment:hover {
-            background: #1ed760;
-        }
-
-        .main-content {
-            transition: filter 0s ease;
-        }
-
-        .main-content.blurred {
-            filter: blur(5px);
-        }
-
-        #album-cover {
-            width: 64px;
-            height: 64px;
-            border-radius: 8px;
-            vertical-align: middle;
-            margin-right: 10px;
-        }
-    </style>
+    <link rel="stylesheet" href="/styles.css">
 
 </head>
 
-<body>
+<body onload="getQueue(); currentlyPlaying();">
     <div class="main-content">
         <h1>Spotify Player</h1>
         <p>User: <%= user %>
@@ -179,7 +24,7 @@
             <div id="songStats">
                 <h2>Now Playing:</h2>
                 <hr>
-                <div id="nowPlaying">
+                <div id="currentlyPlaying">
                 </div>
                 <h2>Up Next:</h2>
                 <hr>
@@ -272,11 +117,14 @@
             if (data.tracks && data.tracks.items.length > 0) {
                 data.tracks.items.forEach(track => {
                     const trackDiv = document.createElement('div');
-                    trackDiv.style.marginBottom = '10px';
+                    trackDiv.className = 'search-result-item';
                     trackDiv.innerHTML = `
-                        <img src="${track.album.image}" alt="${track.album.name}" id="album-cover" />
-                        <strong>${track.name}</strong> by ${track.artist}
-                        <button onclick="checkPaymentAndPlay('${track.uri}')">Play</button>
+                        <img src="${track.album.image}" alt="${track.album.name}" class="album-cover" />
+                        <div class="search-result-content">
+                            <div class="search-result-title">${track.name}</div>
+                            <div class="search-result-artist">${track.artist}</div>
+                        </div>
+                        <button onclick="checkPaymentAndPlay('${track.uri}')" class="play-button">Play</button>
                     `;
                     resultsDiv.appendChild(trackDiv);
                 });
@@ -288,7 +136,7 @@
         }
     }
 
-        async function getQueue() {
+    async function getQueue() {
         try {
             const response = await fetch('/getQueue', {
                 method: 'GET',
@@ -301,10 +149,13 @@
                 queueDiv.innerHTML = '';
                 data.tracks.items.forEach((item, index) => {
                     const itemDiv = document.createElement('div');
-                    itemDiv.style.marginBottom = '10px';
+                    itemDiv.className = 'queue-item';
                     itemDiv.innerHTML = `
-                        <img src="${item.album.image}" alt="${item.album.name}" id="album-cover" />
-                        <strong>${item.name}</strong> by ${item.artist}
+                        <img src="${item.album.image}" alt="${item.album.name}" class="album-cover" />
+                        <div class="queue-item-content">
+                            <div class="queue-item-title">${item.name}</div>
+                            <div class="queue-item-artist">${item.artist}</div>
+                        </div>
                     `;
                     queueDiv.appendChild(itemDiv);
                 });
@@ -316,21 +167,34 @@
         }
     }
 
-    async function currentlyPlaying(){
+    async function currentlyPlaying() {
         try {
             const response = await fetch('/currentlyPlaying', {
                 method: 'GET',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(params)
+                headers: { 'Content-Type': 'application/json' }
             });
             const data = await response.json();
             if (data.ok) {
-                console.log('Currently playing data:', data);
+                console.log('Currently Playing:', data.tracks.items);
+                const CurrentDiv = document.getElementById('currentlyPlaying');
+                CurrentDiv.innerHTML = '';
+                data.tracks.items.forEach((item, index) => {
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'current-item';
+                    itemDiv.innerHTML = `
+                        <img src="${item.album.image}" alt="${item.album.name}" class="album-cover" />
+                        <div class="current-item-content">
+                            <div class="current-item-title">${item.name}</div>
+                            <div class="current-item-artist">${item.artist}</div>
+                        </div>
+                    `;
+                    CurrentDiv.appendChild(itemDiv);
+                });
             } else {
-                console.error('Failed to get currently playing:', data.error);
+                console.error('Failed to get current track:', data.error);
             }
         } catch (error) {
-            console.error('Error fetching currently playing:', error);
+            console.error('Error fetching current track:', error);
         }
     }
 
@@ -357,7 +221,9 @@
         hidePayment(); // This will now automatically play the pending track
     }
 
-    // setInterval(getQueue, 7000); // Refresh queue every 7 seconds
+    setInterval(getQueue, 7000); // Refresh queue every 7 seconds
+    setInterval(currentlyPlaying, 7000); // Refresh currently playing every 7 seconds
+
 </script>
 
 </html>

@@ -381,22 +381,44 @@ app.post('/addToQueue', async (req, res) => {
 });
 
 
-app.get('/playbackStatus', async (req, res) => {
+app.get('/currentlyPlaying', async (req, res) => {
     try {
         await ensureSpotifyAccessToken();
-        const response = await fetch('https://api.spotify.com/v1/me/player', {
+        const response = await fetch('https://api.spotify.com/v1/me/player/currently-playing', {
             headers: { 'Authorization': `Bearer ${spotifyApi.getAccessToken()}` }
         });
-
         if (response.status === 200) {
             const data = await response.json();
-            res.json({ isPlaying: data.is_playing, track: data.item });
+
+            // Check if something is playing
+            if (!data || !data.item) {
+                return res.json({ ok: true, tracks: { items: [] } });
+            }
+            const track = data.item;
+            const simplified = ({
+                id: track.id,
+                name: track.name,
+                artist: track.artists.map(a => a.name).join(', '),
+                uri: track.uri,
+                album: {
+                    name: track.album.name,
+                    image: track.album.images?.[0]?.url || null
+                },
+                explicit: track.explicit,
+                duration_ms: track.duration_ms
+            });
+            res.json({
+                ok: true,
+                tracks: { items: [simplified] }
+            });
+        } else if (response.status === 204) {
+            res.json({ ok: true, tracks: { items: [] } });
         } else {
-            res.json({ isPlaying: false });
+            res.status(response.status).json({ ok: false, error: 'Failed to get queue' });
         }
     } catch (error) {
-        console.error('Playback status error:', error);
-        res.status(500).json({ error: 'Failed to get playback state', details: error.message });
+        console.error('Get queue error:', error);
+        res.status(500).json({ ok: false, error: 'Failed to get queue', details: error.message });
     }
 });
 
@@ -405,7 +427,6 @@ app.get('/playbackStatus', async (req, res) => {
 Digipog requests
  
 */
-
 
 app.post('/transfer', async (req, res) => {
     try {
@@ -460,10 +481,10 @@ app.post('/transfer', async (req, res) => {
             });
         } else {
             console.log('Transfer failed:', responseJson);
-            res.status(transferResult.status || 400).json({ 
-                ok: false, 
-                error: 'Transfer failed', 
-                details: responseJson 
+            res.status(transferResult.status || 400).json({
+                ok: false,
+                error: 'Transfer failed',
+                details: responseJson
             });
         }
     } catch (err) {
