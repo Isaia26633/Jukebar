@@ -427,7 +427,8 @@ app.post('/transfer', async (req, res) => {
         });
 
         const responseJson = await transferResult.json();
-        console.log('Formbar response:', responseJson);
+        console.log('Formbar response status:', transferResult.status);
+        console.log('Formbar response JSON:', JSON.stringify(responseJson, null, 2));
 
         // Check if the transfer was successful based on the response
         if (transferResult.ok && responseJson) {
@@ -442,17 +443,46 @@ app.post('/transfer', async (req, res) => {
                 res.json({ ok: true, message: 'Transfer successful', response: responseJson });
             });
         } else {
-            console.log('Transfer failed:', responseJson);
+            console.log('Transfer failed with status:', transferResult.status);
+            console.log('Full Formbar error response:', JSON.stringify(responseJson, null, 2));
             
             // Extract the specific error message from Formbar response
             let specificError = 'Transfer failed';
-            if (responseJson && responseJson.message) {
-                specificError = responseJson.message;
+            
+            // Check if there's a JWT token that needs to be decoded
+            if (responseJson && responseJson.token) {
+                try {
+                    // Decode the JWT token to get the actual error message
+                    const jwt = require('jsonwebtoken');
+                    const decoded = jwt.decode(responseJson.token);
+                    console.log('Decoded JWT:', decoded);
+                    
+                    if (decoded && decoded.message) {
+                        specificError = decoded.message;
+                    }
+                } catch (err) {
+                    console.error('Failed to decode JWT token:', err);
+                }
             }
+            
+            // Try other possible error message locations if no JWT
+            if (specificError === 'Transfer failed' && responseJson) {
+                if (responseJson.message) {
+                    specificError = responseJson.message;
+                } else if (responseJson.error) {
+                    specificError = responseJson.error;
+                } else if (responseJson.details && responseJson.details.message) {
+                    specificError = responseJson.details.message;
+                } else if (responseJson.data && responseJson.data.message) {
+                    specificError = responseJson.data.message;
+                }
+            }
+            
+            console.log('Extracted error message:', specificError);
             
             res.status(transferResult.status || 400).json({
                 ok: false,
-                error: specificError, // Use the specific error instead of generic message
+                error: specificError,
                 details: responseJson
             });
         }
