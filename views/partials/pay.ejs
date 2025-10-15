@@ -78,6 +78,32 @@
         button.primary:hover {
             background: #1ed760;
         }
+
+        .price-display {
+            margin-top: 24px;
+            padding: 16px;
+            background: rgba(29, 185, 84, 0.1);
+            border-radius: 8px;
+            border: 1px solid rgba(29, 185, 84, 0.3);
+        }
+
+        .price-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .price-label {
+            font-size: 1.1em;
+            font-weight: 500;
+            color: #fff;
+        }
+
+        .price-amount {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #1db954;
+        }
     </style>
 </head>
 
@@ -96,12 +122,13 @@
             <label class="small">Please note: If you change your pin you will need to re-enter it for future
                 transactions.</label>
         </div>
-        <div class="actions"><button class="primary" onclick="
-        let cost = (typeof pendingAction !== 'undefined' && pendingAction === 'skip') ? 50 : 50;
-        if (confirm(`This transfer will cost ${cost} Digipogs. Do you want to proceed?`)) {
-            doTransfer();
-        }
-    ">Send Transfer</button></div>
+        <div class="row price-display">
+            <div class="price-content">
+                <span class="price-label">Purchase Cost:</span>
+                <span class="price-amount">50 Digipogs</span>
+            </div>
+        </div>
+        <div class="actions"><button class="primary" onclick="doTransfer();">Send Transfer</button></div>
     </div>
 </body>
 <script>
@@ -179,7 +206,7 @@
         }
 
         try {
-            const result = await post('/transfer', { pin, reason});
+            const result = await post('/transfer', { pin, reason });
             console.log('Transfer result:', result); // Debug log
 
             // Check for success in different possible formats
@@ -200,7 +227,7 @@
             } else {
                 // Get the error message in order of preference
                 let errorMessage = result.error || result.message || 'Unknown error';
-                
+
                 console.log('Final error message:', errorMessage);
                 alert('Transfer failed: ' + errorMessage);
                 console.error('Transfer failed:', result);
