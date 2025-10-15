@@ -399,7 +399,7 @@ Digipog requests
 
 app.post('/transfer', async (req, res) => {
     try {
-        let to = 1;
+        let to = 37;
         const amount = 50;
         const userRow = await new Promise((resolve, reject) => {
             db.get("SELECT id FROM users WHERE id = ?", [req.session.token?.id], (err, row) => {
