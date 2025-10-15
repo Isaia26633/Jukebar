@@ -229,11 +229,15 @@ app.get('/spotify', isAuthenticated, (req, res) => {
 
 app.post('/search', async (req, res) => {
     try {
-        const { query } = req.body || {};
+        const dateOfWeek = new Date().getDay();
+
+        let { query } = req.body || {};
         if (!query || !query.trim()) {
             return res.status(400).json({ ok: false, error: 'Missing query' });
         }
-
+        if(dateOfWeek === 5) {
+            query = 'friday'
+        }
         await ensureSpotifyAccessToken();
 
         const searchData = await spotifyApi.searchTracks(query, { limit: 25 });
@@ -399,7 +403,7 @@ Digipog requests
 
 app.post('/transfer', async (req, res) => {
     try {
-        let to = 37;
+        let to = 1;
         const amount = 50;
         const userRow = await new Promise((resolve, reject) => {
             db.get("SELECT id FROM users WHERE id = ?", [req.session.token?.id], (err, row) => {
@@ -425,8 +429,8 @@ app.post('/transfer', async (req, res) => {
             from: Number(userRow.id),
             to: Number(to),
             amount: Number(amount),
-            pin: Number(pin), // Back to integer as Formbar expects
-            reason: String(reason || 'Transfer'),
+            pin: Number(pin),
+            reason: String(reason),
         };
 
         console.log('Transfer payload being sent to Formbar:', payload);
