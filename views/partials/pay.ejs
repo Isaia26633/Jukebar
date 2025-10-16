@@ -144,7 +144,7 @@
                 savePIN.checked = true; // Check the save PIN checkbox if we loaded a PIN
             }
         } catch (error) {
-            //console.error('Failed to load saved PIN:', error);
+            console.error('Failed to load saved PIN:', error);
         }
     }
 
@@ -153,12 +153,12 @@
             const res = await fetch('/getPin', { method: 'POST' });
             const data = await res.json();
             if (!data.ok) {
-                //console.error('Failed to retrieve saved PIN', data.error);
+                console.error('Failed to retrieve saved PIN', data.error);
                 return '';
             }
             return data.userPin || '';
         } catch (error) {
-            //console.error('Error fetching saved PIN:', error);
+            console.error('Error fetching saved PIN:', error);
             return '';
         }
     }
@@ -183,7 +183,7 @@
                 await post('/savePin', { pin });
                 //console.log('PIN saved successfully');
             } catch (error) {
-                //console.error('Failed to save PIN:', error);
+                console.error('Failed to save PIN:', error);
             }
         }
 
@@ -194,7 +194,7 @@
         } else if (pendingAction === 'skip') {
             reason += ' - Skip Track';
         } else {
-            //console.error('Unknown pending action:', pendingAction);
+            console.error('Unknown pending action:', pendingAction);
             alert('Unknown action. Please try again. Your digipogs have not been charged.');
             return;
         }
@@ -219,7 +219,7 @@
                     hasPaid = true;
                     //console.log('Payment successful - hasPaid set to:', hasPaid);
                 } else {
-                    //console.error('hasPaid variable not found in global scope');
+                    console.error('hasPaid variable not found in global scope');
                 }
                 hidePayment();
                 return;
@@ -229,10 +229,10 @@
 
                 //console.log('Final error message:', errorMessage);
                 alert('Transfer failed: ' + errorMessage);
-                //console.error('Transfer failed:', result);
+                console.error('Transfer failed:', result);
             }
         } catch (error) {
-            //console.error('Transfer error:', error);
+            console.error('Transfer error:', error);
             alert('Transfer failed: Network error');
         }
     }

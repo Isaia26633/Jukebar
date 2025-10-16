@@ -29,6 +29,7 @@ const { isAuthenticated } = require('./middleware/auth');
 const authRoutes = require('./routes/auth');
 const spotifyRoutes = require('./routes/spotify');
 const paymentRoutes = require('./routes/payment');
+const { router: socketRouter, setupFormbarSocket } = require('./routes/socket');
 
 // Formbar Socket.IO connection
 const FORMBAR_ADDRESS = process.env.FORMBAR_ADDRESS;
@@ -37,6 +38,8 @@ const API_KEY = process.env.API_KEY || '';
 const formbarSocket = ioClient(FORMBAR_ADDRESS, {
     extraHeaders: { api: API_KEY }
 });
+
+setupFormbarSocket(io, formbarSocket);
 
 // Main routes
 app.get('/', isAuthenticated, (req, res) => {
@@ -68,6 +71,7 @@ app.get('/spotify', isAuthenticated, (req, res) => {
 app.use('/', authRoutes);
 app.use('/', spotifyRoutes);
 app.use('/', paymentRoutes);
+app.use('/', socketRouter);
 
 server.listen(port, () => {
     console.log(`Server listening at http://localhost:${port}`);

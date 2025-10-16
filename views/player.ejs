@@ -94,7 +94,7 @@
                 // Reset payment after claiming
                 hasPaid = false;
             } catch (e) {
-                //console.error('Failed to claim payment', e);
+                console.error('Failed to claim payment', e);
                 pendingTrackUri = uri;
                 showPayment();
                 return;
@@ -132,7 +132,7 @@
                 // Reset payment after claiming
                 hasPaid = false;
             } catch (e) {
-                //console.error('Failed to claim payment', e);
+                console.error('Failed to claim payment', e);
                 pendingTrackUri = currentlyPlayingUri;
                 pendingAction = 'skip';
                 showPayment();
@@ -157,7 +157,7 @@
                     alert('Track skipped!');
                 }
             } catch (error) {
-                //console.error('Error skipping track:', error);
+                console.error('Error skipping track:', error);
                 alert('Network error');
             }
         }
@@ -178,8 +178,8 @@
                     }
                 })
                 .catch(error => {
-                    //console.log('oopsies!')
-                    //console.error('Error adding track to queue:', error);
+                    console.log('oopsies!')
+                    console.error('Error adding track to queue:', error);
                     alert('Network error');
                 });
         }
@@ -216,7 +216,7 @@
                     resultsDiv.innerHTML = '<p>No results found.</p>';
                 }
             } catch (error) {
-                //console.error('Error searching Spotify:', error);
+                console.error('Error searching Spotify:', error);
             }
         }
 
@@ -249,10 +249,10 @@
                         });
                     }
                 } else {
-                    //console.error('Failed to get queue:', data.error);
+                    console.error('Failed to get queue:', data.error);
                 }
             } catch (error) {
-                //console.error('Error fetching queue:', error);
+                console.error('Error fetching queue:', error);
             }
         }
 
@@ -288,10 +288,10 @@
                         });
                     }
                 } else {
-                    //console.error('Failed to get current track:', data.error);
+                    console.error('Failed to get current track:', data.error);
                 }
             } catch (error) {
-                //console.error('Error fetching current track:', error);
+                console.error('Error fetching current track:', error);
             }
         }
 
@@ -336,12 +336,12 @@
                         //console.log('Refund successful:', data);
                     } else {
                         alert('Refund failed: ' + (data.error || 'Unknown error'));
-                        //console.error('Refund failed:', data.error);
+                        console.error('Refund failed:', data.error);
                     }
                 })
                 .catch(error => {
                     alert('Network error during refund. Please contact support.');
-                    //console.error('Error during refund:', error);
+                    console.error('Error during refund:', error);
                 });
         }
 
