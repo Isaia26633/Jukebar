@@ -24,6 +24,6 @@ function setupFormbarSocket(io, formbarSocket) {
 }
 
 function checkPermissions(io, formbarSocket) {
-    formbarSocket.on('')
+
 }
 module.exports = { router, setupFormbarSocket };
