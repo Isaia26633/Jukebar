@@ -12,7 +12,11 @@
 
 <body>
     <div class="main-content">
-        <h1>Spotify Player</h1>
+        <h1 id="jubnbark">Jukebar</h1>
+        <script>
+            const chance = Math.floor(Math.random() * 1000);
+            if(chance == 67) document.getElementById('jubnbark').innerText = "Jubekar";
+        </script>
         <p>User: <%= user %>
         </p>
         <div class="container">
