@@ -153,6 +153,8 @@
                 });
                 if (!response.ok) {
                     refund();
+                } else {
+                    alert('Track skipped!');
                 }
             } catch (error) {
                 //console.error('Error skipping track:', error);
