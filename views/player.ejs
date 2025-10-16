@@ -107,7 +107,7 @@
             skip(currentlyPlayingUri);
             return;
         }
-        
+
         if (!hasPaid) {
             pendingTrackUri = currentlyPlayingUri;
             pendingAction = 'skip';
@@ -147,7 +147,7 @@
                 body: JSON.stringify({ uri })
             });
             if (!response.ok) {
-                throw new Error('Failed to skip track');
+                refund();
             }
         } catch (error) {
             console.error('Error skipping track:', error);
@@ -166,7 +166,7 @@
                     alert('Track added to queue!');
                 } else {
                     return response.json().then(data => {
-                        alert('Failed to add to queue: ' + (data.error || data.message || 'Unknown error'));
+                        refund();
                     });
                 }
             })
@@ -224,18 +224,23 @@
                 console.log('Queue data:', data.tracks.items);
                 const queueDiv = document.getElementById('queue');
                 queueDiv.innerHTML = '';
-                data.tracks.items.forEach((item, index) => {
-                    const itemDiv = document.createElement('div');
-                    itemDiv.className = 'queue-item';
-                    itemDiv.innerHTML = `
+                if (data.tracks.items.length == 0) {
+                    const queueDiv = document.getElementById('queue');
+                    queueDiv.innerHTML = '<p>No tracks in queue.</p>';
+                } else {
+                    data.tracks.items.forEach((item, index) => {
+                        const itemDiv = document.createElement('div');
+                        itemDiv.className = 'queue-item';
+                        itemDiv.innerHTML = `
                         <img src="${item.album.image}" alt="${item.album.name}" class="album-cover" />
                         <div class="queue-item-content">
                             <div class="queue-item-title">${item.name}</div>
                             <div class="queue-item-artist">${item.artist}</div>
                         </div>
                     `;
-                    queueDiv.appendChild(itemDiv);
-                });
+                        queueDiv.appendChild(itemDiv);
+                    });
+                }
             } else {
                 console.error('Failed to get queue:', data.error);
             }
@@ -255,19 +260,26 @@
                 console.log('Currently Playing:', data.tracks.items);
                 const CurrentDiv = document.getElementById('currentlyPlaying');
                 CurrentDiv.innerHTML = '';
-                data.tracks.items.forEach((item, index) => {
-                    const itemDiv = document.createElement('div');
-                    itemDiv.className = 'current-item';
-                    itemDiv.innerHTML = `
+                if (data.tracks.items.length == 0) {
+                    const CurrentDiv = document.getElementById('currentlyPlaying');
+                    CurrentDiv.innerHTML = '<p>No track is currently playing. Ask your teacher to start spotify</p>';
+                    currentlyPlayingUri = null;
+                }
+                else {
+                    data.tracks.items.forEach((item, index) => {
+                        const itemDiv = document.createElement('div');
+                        itemDiv.className = 'current-item';
+                        itemDiv.innerHTML = `
                         <img src="${item.album.image}" alt="${item.album.name}" class="album-cover" />
                         <div class="current-item-content">
                             <div class="current-item-title">${item.name}</div>
                             <div class="current-item-artist">${item.artist}</div>
                         </div>
                     `;
-                    CurrentDiv.appendChild(itemDiv);
-                    currentlyPlayingUri = item.id
-                });
+                        CurrentDiv.appendChild(itemDiv);
+                        currentlyPlayingUri = item.id
+                    });
+                }
             } else {
                 console.error('Failed to get current track:', data.error);
             }
@@ -302,6 +314,28 @@
     function onPaymentSuccess() {
         hasPaid = true;
         hidePayment();
+    }
+
+    function refund() {
+        fetch('/refund', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reason: "Jukebar refund" })
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.ok) {
+                    alert('Spotify error occurred. Your digipogs have been refunded.');
+                    console.log('Refund successful:', data);
+                } else {
+                    alert('Refund failed: ' + (data.error || 'Unknown error'));
+                    console.error('Refund failed:', data.error);
+                }
+            })
+            .catch(error => {
+                alert('Network error during refund. Please contact support.');
+                console.error('Error during refund:', error);
+            });
     }
 
     setInterval(getQueue, 7000);

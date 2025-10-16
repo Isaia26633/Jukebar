@@ -197,12 +197,10 @@ app.get('/checkPerms', isAuthenticated, (req, res) => {
             return response.json();
         })
         .then((data) => {
-            // Log the data if the request is successful
             console.log(data);
             res.json({ ok: true, data: data });
         })
         .catch((err) => {
-            // If there's a problem, handle it...
             console.log('connection closed due to errors', err);
             res.status(500).json({ ok: false, error: err.message });
         });
@@ -235,7 +233,7 @@ app.post('/search', async (req, res) => {
         if (!query || !query.trim()) {
             return res.status(400).json({ ok: false, error: 'Missing query' });
         }
-        if(dateOfWeek === 5) {
+        if (dateOfWeek === 5) {
             query = 'friday'
         }
         await ensureSpotifyAccessToken();
@@ -403,7 +401,7 @@ Digipog requests
 
 app.post('/transfer', async (req, res) => {
     try {
-        let to = 1;
+        const to = 1;
         const amount = 50;
         const userRow = await new Promise((resolve, reject) => {
             db.get("SELECT id FROM users WHERE id = ?", [req.session.token?.id], (err, row) => {
@@ -459,10 +457,10 @@ app.post('/transfer', async (req, res) => {
         } else {
             console.log('Transfer failed with status:', transferResult.status);
             console.log('Full Formbar error response:', JSON.stringify(responseJson, null, 2));
-            
+
             // Extract the specific error message from Formbar response
             let specificError = 'Transfer failed';
-            
+
             // Check if there's a JWT token that needs to be decoded
             if (responseJson && responseJson.token) {
                 try {
@@ -470,7 +468,7 @@ app.post('/transfer', async (req, res) => {
                     const jwt = require('jsonwebtoken');
                     const decoded = jwt.decode(responseJson.token);
                     console.log('Decoded JWT:', decoded);
-                    
+
                     if (decoded && decoded.message) {
                         specificError = decoded.message;
                     }
@@ -478,7 +476,7 @@ app.post('/transfer', async (req, res) => {
                     console.error('Failed to decode JWT token:', err);
                 }
             }
-            
+
             // Try other possible error message locations if no JWT
             if (specificError === 'Transfer failed' && responseJson) {
                 if (responseJson.message) {
@@ -491,9 +489,9 @@ app.post('/transfer', async (req, res) => {
                     specificError = responseJson.data.message;
                 }
             }
-            
+
             console.log('Extracted error message:', specificError);
-            
+
             res.status(transferResult.status || 400).json({
                 ok: false,
                 error: specificError,
@@ -501,6 +499,90 @@ app.post('/transfer', async (req, res) => {
             });
         }
     } catch (err) {
+        res.status(502).json({ ok: false, error: 'HTTP request to Formbar failed', details: err?.message || String(err) });
+    }
+});
+
+app.post('/refund', async (req, res) => {
+    try {
+        const from = 1;
+        const amount = 50;
+        const reason = "Jukebar refund"
+        const pin = process.env.PIN
+        const userRow = await new Promise((resolve, reject) => {
+            db.get("SELECT id FROM users WHERE id = ?", [req.session.token?.id], (err, row) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(row);
+                }
+            });
+        });
+
+        if (!userRow || !userRow.id || !from || !amount || pin == null) {
+            res.status(400).json({ ok: false, error: 'Missing required fields or user not found' });
+            return;
+        }
+        const payload = {
+            from: Number(from),
+            to: Number(userRow.id),
+            amount: Number(amount),
+            pin: Number(pin),
+            reason: String(reason),
+        };
+
+        console.log('Transfer payload being sent to Formbar:', payload);
+        const transferResult = await fetch(`${FORMBAR_ADDRESS}/api/digipogs/transfer`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+
+        const responseJson = await transferResult.json();
+        console.log('Formbar response status:', transferResult.status);
+        console.log('Formbar response JSON:', JSON.stringify(responseJson, null, 2));
+
+        // Check if the transfer was successful based on the response
+        if (transferResult.ok && responseJson) {
+            req.session.payment = {
+                from: Number(from),
+                to: Number(userRow.id),
+                amount: Number(amount),
+                at: Date.now()
+            };
+            return req.session.save(() => {
+                res.json({ ok: true, message: 'Transfer successful', response: responseJson });
+            });
+        } else {
+            console.log('Transfer failed with status:', transferResult.status);
+            console.log('Full Formbar error response:', JSON.stringify(responseJson, null, 2));
+
+            // Extract the specific error message from Formbar response
+            let specificError = 'Transfer failed';
+
+            // Try other possible error message locations if no JWT
+            if (specificError === 'Transfer failed' && responseJson) {
+                if (responseJson.message) {
+                    specificError = responseJson.message;
+                } else if (responseJson.error) {
+                    specificError = responseJson.error;
+                } else if (responseJson.details && responseJson.details.message) {
+                    specificError = responseJson.details.message;
+                } else if (responseJson.data && responseJson.data.message) {
+                    specificError = responseJson.data.message;
+                }
+            }
+
+            console.log('Extracted error message:', specificError);
+
+            res.status(transferResult.status || 400).json({
+                ok: false,
+                error: specificError,
+                details: responseJson
+            });
+        }
+    } catch (err) {
+        console.error('Refund error:', err);
         res.status(502).json({ ok: false, error: 'HTTP request to Formbar failed', details: err?.message || String(err) });
     }
 });

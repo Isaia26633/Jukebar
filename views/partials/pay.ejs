@@ -195,13 +195,13 @@
             reason += ' - Skip Track';
         } else {
             console.error('Unknown pending action:', pendingAction);
-            alert('Unknown action. Please try again.');
+            alert('Unknown action. Please try again. Your digipogs have not been charged.');
             return;
         }
 
         // Validate required fields
         if (!pin) {
-            alert('Please fill in all required fields');
+            alert('Please enter your PIN.');
             return;
         }
 
@@ -222,7 +222,6 @@
                     console.error('hasPaid variable not found in global scope');
                 }
                 hidePayment();
-                alert('Transfer successful!');
                 return;
             } else {
                 // Get the error message in order of preference
