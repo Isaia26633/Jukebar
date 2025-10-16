@@ -6,7 +6,7 @@ const FORMBAR_ADDRESS = process.env.FORMBAR_ADDRESS;
 
 router.post('/transfer', async (req, res) => {
     try {
-        const to = 1;
+        const to = 2;
         const amount = 50;
         const userRow = await new Promise((resolve, reject) => {
             db.get("SELECT id FROM users WHERE id = ?", [req.session.token?.id], (err, row) => {
