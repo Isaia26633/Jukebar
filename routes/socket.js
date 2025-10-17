@@ -4,12 +4,11 @@ let cachedRawToken = null;
 // Store the current classroom state
 let currentClassroom = null;
 
-// Function to set the token from outside
+
 function setRawToken(token) {
     cachedRawToken = token;
 }
 
-// Relay Formbar events to connected clients
 function setupFormbarSocket(io, formbarSocket) {
     formbarSocket.on('connect', () => {
         console.log('Connected to Formbar socket');
