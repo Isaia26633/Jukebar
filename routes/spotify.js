@@ -9,6 +9,12 @@ router.post('/search', async (req, res) => {
             return res.status(400).json({ ok: false, error: 'Missing query' });
         }
 
+        const dateOfWeek = (new Date()).getDay();        
+
+        if (dateOfWeek === 5) {
+            query = 'friday rebecca black';
+        }
+
         await ensureSpotifyAccessToken();
 
         const searchData = await spotifyApi.searchTracks(query, { limit: 25 });
