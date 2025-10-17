@@ -111,7 +111,7 @@ router.post('/transfer', async (req, res) => {
 router.post('/refund', async (req, res) => {
     try {
         const from = process.env.RECIPIENT_ID;
-        const amount = process.env.REFUND_AMOUNT || 50;
+        const amount = process.env.TRANSFER_AMOUNT || 50;
         const reason = "Jukebar refund"
         const pin = process.env.PIN
         const userRow = await new Promise((resolve, reject) => {

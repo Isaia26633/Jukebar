@@ -18,14 +18,14 @@ function setupFormbarSocket(io, formbarSocket) {
             formbarSocket.emit('auth', { token: cachedRawToken });
         }
     });
-    formbarSocket.on('classroomUpdate', (classroomData) => {
+    formbarSocket.on('classUpdate', (classroomData) => {
         console.log('Received classroom update from Formbar:', classroomData);
         
         // Store the current classroom state
         currentClassroom = classroomData;
         
         // Relay the classroom data to all connected clients
-        io.emit('classroomUpdate', classroomData);
+        io.emit('classUpdate', classroomData);
     });
 
     formbarSocket.on('event', (data) => {
