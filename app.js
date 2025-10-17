@@ -26,10 +26,10 @@ app.use(session({
 
 const { isAuthenticated } = require('./middleware/auth');
 
-const authRoutes = require('./routes/auth');
+const { router: authRoutes } = require('./routes/auth');
 const spotifyRoutes = require('./routes/spotify');
 const paymentRoutes = require('./routes/payment');
-const { router: socketRouter, setupFormbarSocket } = require('./routes/socket');
+const { setupFormbarSocket } = require('./routes/socket');
 
 // Formbar Socket.IO connection
 const FORMBAR_ADDRESS = process.env.FORMBAR_ADDRESS;
@@ -71,7 +71,6 @@ app.get('/spotify', isAuthenticated, (req, res) => {
 app.use('/', authRoutes);
 app.use('/', spotifyRoutes);
 app.use('/', paymentRoutes);
-app.use('/', socketRouter);
 
 server.listen(port, () => {
     console.log(`Server listening at http://localhost:${port}`);

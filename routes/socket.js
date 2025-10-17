@@ -1,14 +1,29 @@
-const express = require('express');
-const { formbarSocket } = require('../app');
-const router = express.Router();
+// Store the raw token globally (you might want a better approach)
+let cachedRawToken = null;
+
+// Store the current classroom state
+let currentClassroom = null;
+
+// Function to set the token from outside
+function setRawToken(token) {
+    cachedRawToken = token;
+}
 
 // Relay Formbar events to connected clients
 function setupFormbarSocket(io, formbarSocket) {
     formbarSocket.on('connect', () => {
         console.log('Connected to Formbar socket');
+
+        if (cachedRawToken) {
+            formbarSocket.emit('auth', { token: cachedRawToken });
+        }
     });
-    formbarSocket.on('classUpdate', (classroomData) => {
+    formbarSocket.on('classroomUpdate', (classroomData) => {
         console.log('Received classroom update from Formbar:', classroomData);
+        
+        // Store the current classroom state
+        currentClassroom = classroomData;
+        
         // Relay the classroom data to all connected clients
         io.emit('classroomUpdate', classroomData);
     });
@@ -26,4 +41,27 @@ function setupFormbarSocket(io, formbarSocket) {
 function checkPermissions(io, formbarSocket) {
 
 }
-module.exports = { router, setupFormbarSocket };
+
+// Function to check if a user has Auxiliary permission
+function hasAuxiliaryPermission(userId) {
+    if (!currentClassroom || !currentClassroom.permissions) {
+        console.log('No classroom data available');
+        return false;
+    }
+    
+    // Check if the user has Auxiliary permission
+    const userPermissions = currentClassroom.permissions[userId];
+    if (!userPermissions) {
+        console.log(`No permissions found for user ${userId}`);
+        return false;
+    }
+    
+    return userPermissions.includes('Auxiliary');
+}
+
+// Function to get current classroom data
+function getCurrentClassroom() {
+    return currentClassroom;
+}
+
+module.exports = { setupFormbarSocket, setRawToken, hasAuxiliaryPermission, getCurrentClassroom };

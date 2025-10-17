@@ -6,8 +6,8 @@ const FORMBAR_ADDRESS = process.env.FORMBAR_ADDRESS;
 
 router.post('/transfer', async (req, res) => {
     try {
-        const to = 2;
-        const amount = 50;
+        const to = process.env.RECIPIENT_ID;
+        const amount = process.env.TRANSFER_AMOUNT || 50;
         const userRow = await new Promise((resolve, reject) => {
             db.get("SELECT id FROM users WHERE id = ?", [req.session.token?.id], (err, row) => {
                 if (err) {
@@ -110,8 +110,8 @@ router.post('/transfer', async (req, res) => {
 
 router.post('/refund', async (req, res) => {
     try {
-        const from = 1;
-        const amount = 50;
+        const from = process.env.RECIPIENT_ID;
+        const amount = process.env.REFUND_AMOUNT || 50;
         const reason = "Jukebar refund"
         const pin = process.env.PIN
         const userRow = await new Promise((resolve, reject) => {

@@ -14,11 +14,10 @@
     <div class="main-content">
         <h1 id="jubnbark">Jukebar</h1>
         <script>
-            const chance = Math.floor(Math.random() * 1000);
+            const chance = Math.floor(Math.random() * 100);
             if(chance == 67) document.getElementById('jubnbark').innerText = "Jubekar";
         </script>
-        <p>User: <%= user %>
-        </p>
+        <p>Logged in as: <%= user %></p>
         <div class="container">
             <div id="spotifyPlayer">
                 <form id="searchForm" onsubmit="handleSearchSubmit(event)">
@@ -53,7 +52,6 @@
         </div>
     </div>
 
-</body>
 <script>
     (function () {
         'use strict';
@@ -388,7 +386,9 @@
         currentlyPlaying();
         setInterval(getQueue, 7000);
         setInterval(currentlyPlaying, 7000);
-    })();
-</script>
+            setInterval(currentlyPlaying, 7000);
+        })();
+    </script>
+</body>
 
 </html>

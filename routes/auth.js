@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const db = require('../utils/database');
+const { setRawToken } = require('./socket');
 
 const FORMBAR_ADDRESS = process.env.FORMBAR_ADDRESS;
 const API_KEY = process.env.API_KEY || '';
@@ -11,10 +12,17 @@ const THIS_URL = `http://localhost:${port}/login`;
 
 router.get('/login', (req, res) => {
     if (req.query.token) {
-        const tokenData = jwt.decode(req.query.token);
+        const rawToken = req.query.token; // Get the actual raw token
+        const tokenData = jwt.decode(rawToken);
+        
         req.session.token = tokenData;
         req.session.user = tokenData.displayName;
         req.session.permission = tokenData.permission;
+        req.session.rawToken = rawToken;
+        
+        // Set the token for WebSocket authentication
+        setRawToken(rawToken);
+        
         console.log(tokenData);
         
         db.run("INSERT INTO users (id, displayName, pin) VALUES (?, ?, ?)", [tokenData.id, tokenData.displayName, null], (err) => {
@@ -57,35 +65,13 @@ router.get('/login', (req, res) => {
     }
 });
 
+function getRawToken(req) {
+    return req.session?.rawToken || null;
+}
+
 router.get('/logout', (req, res) => {
     req.session.destroy();
     res.redirect(`${AUTH_URL}?redirectURL=${THIS_URL}`);
 });
 
-router.get('/checkPerms', (req, res) => {
-    const reqOptions = {
-        method: 'GET',
-        headers: {
-            'API': API_KEY,
-            'Content-Type': 'application/json'
-        }
-    };
-
-    fetch(`${FORMBAR_ADDRESS}/api/me`, reqOptions)
-        .then((response) => {
-            if (!response.ok) {
-                console.log('Server returned non-OK response:', response);
-            }
-            return response.json();
-        })
-        .then((data) => {
-            console.log(data);
-            res.json({ ok: true, data: data });
-        })
-        .catch((err) => {
-            console.log('connection closed due to errors', err);
-            res.status(500).json({ ok: false, error: err.message });
-        });
-});
-
-module.exports = router;
+module.exports = { router, getRawToken };
