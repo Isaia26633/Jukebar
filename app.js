@@ -55,7 +55,8 @@ app.get('/', isAuthenticated, (req, res) => {
             user: req.session.user,
             userID: req.session.token?.id,
             hasPaid: !!req.session.hasPaid,
-            payment: req.session.payment || null
+            payment: req.session.payment || null,
+            userPermission: req.session.permission || null
         });
     } catch (error) {
         res.send(error.message);
@@ -68,7 +69,8 @@ app.get('/spotify', isAuthenticated, (req, res) => {
             user: req.session.user,
             userID: req.session.token?.id,
             hasPaid: !!req.session.hasPaid,
-            payment: req.session.payment || null
+            payment: req.session.payment || null,
+            userPermission: req.session.permissions || null
         });
     } catch (error) {
         res.send(error.message);

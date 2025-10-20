@@ -17,13 +17,14 @@ router.get('/login', (req, res) => {
         
         req.session.token = tokenData;
         req.session.user = tokenData.displayName;
-        req.session.permission = tokenData.permission;
+        req.session.permissions = tokenData.permissions;
         req.session.rawToken = rawToken;
         
         // Set the token for WebSocket authentication
         setRawToken(rawToken);
         
-        console.log(tokenData);
+        // console.log('Token data:', tokenData);
+        console.log('User permission:', req.session.permissions);
         
         db.run("INSERT INTO users (id, displayName, pin) VALUES (?, ?, ?)", [tokenData.id, tokenData.displayName, null], (err) => {
             // if the table doesnt exist, create it
