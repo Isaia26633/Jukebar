@@ -7,6 +7,7 @@
     <title>Jukebar</title>
     <link rel="icon" href="/img/favicon.png">
     <link rel="stylesheet" href="/styles.css">
+    <script src="/socket.io/socket.io.js"></script>
 
 </head>
 
@@ -55,6 +56,48 @@
 <script>
     (function () {
         'use strict';
+
+        // Connect to Socket.IO server
+        const socket = io();
+
+        // Add connection debugging
+        socket.on('connect', () => {
+            console.log('Socket.IO connected to server, socket ID:', socket.id);
+        });
+
+        socket.on('disconnect', () => {
+            console.log('Socket.IO disconnected from server');
+        });
+
+        socket.on('connect_error', (error) => {
+            console.error('Socket.IO connection error:', error);
+        });
+
+        // Debug listener for all Formbar events
+        socket.on('formbarDebug', (data) => {
+            console.log('=== FORMBAR EVENT DEBUG ===');
+            console.log('Event name:', data.eventName);
+            console.log('Event data:', data.data);
+            console.log('===========================');
+        });
+
+        // Listen for classroom updates from Formbar
+        socket.on('classUpdate', (classroomData) => {
+            console.log('Received classroom update:', classroomData);
+            
+            // Handle the classroom settings update here
+            // You can update UI elements or variables based on the classroom settings
+            if (classroomData && classroomData.settings) {
+                console.log('Classroom settings:', classroomData.settings);
+                // Add your logic here to handle settings changes
+                // For example: update payment requirements, permissions, etc.
+            }
+        });
+
+        // Listen for other Formbar events
+        socket.on('formbarEvent', (data) => {
+            console.log('Received Formbar event:', data);
+        });
 
         // Global payment status flag
         let hasPaid = <%= JSON.stringify(hasPaid || false) %>;

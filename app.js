@@ -35,9 +35,16 @@ const { setupFormbarSocket } = require('./routes/socket');
 const FORMBAR_ADDRESS = process.env.FORMBAR_ADDRESS;
 const API_KEY = process.env.API_KEY || '';
 
+console.log('=== Formbar Configuration ===');
+console.log('FORMBAR_ADDRESS:', FORMBAR_ADDRESS);
+console.log('API_KEY present:', !!API_KEY);
+console.log('=============================');
+
 const formbarSocket = ioClient(FORMBAR_ADDRESS, {
     extraHeaders: { api: API_KEY }
 });
+
+console.log('Formbar socket client created, attempting connection...');
 
 setupFormbarSocket(io, formbarSocket);
 
