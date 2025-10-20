@@ -62,23 +62,36 @@
 
             const socket = io();
 
+            // Global payment status flag
+            let hasPaid = <%= JSON.stringify(hasPaid || false) %>;
+            let currentID = <%= JSON.stringify(userID || null) %>;
+            let userName = '<%= user %>';
+            let userPermission = 0; // Will be updated from classUpdate
+            let pendingTrackUri = null;
+            let pendingAction = null;
+            let currentlyPlayingUri = null;
+
+            // Listen for classroom updates to get the user's permission
+            socket.on('classUpdate', (classroomData) => {
+                console.log('Received classroom data');
+                // Find the current user in the students object
+                if (classroomData.students && classroomData.students[userName]) {
+                    userPermission = classroomData.students[userName].classPermissions || 0;
+                    console.log('Updated user permission:', userPermission);
+                }
+            });
+
             socket.on('auxiliaryPermission', (permission) => {
                 console.log('Auxiliary permission:', permission);
                 console.log('User permission:', userPermission);
                 if (permission <= userPermission) {
                     useJukebar = true;
+                    console.log('Jukebar enabled!');
                 } else {
                     useJukebar = false;
+                    console.log('Jukebar disabled by teacher');
                 }
             });
-
-            // Global payment status flag
-            let hasPaid = <%= JSON.stringify(hasPaid || false) %>;
-            let currentID = <%= JSON.stringify(userID || null) %>;
-            let userPermission = <%= JSON.stringify(userPermission) %>;
-            let pendingTrackUri = null;
-            let pendingAction = null;
-            let currentlyPlayingUri = null;
 
 
             function handleSearchSubmit(event) {
@@ -136,10 +149,10 @@
                 }
 
                 currentlyPlayingUri = `spotify:track:${currentlyPlayingUri}`;
-                if (currentID === 37) {
-                    skip(currentlyPlayingUri);
-                    return;
-                }
+                // if (currentID === 37) {
+                //     skip(currentlyPlayingUri);
+                //     return;
+                // }
 
                 if (!hasPaid) {
                     pendingTrackUri = currentlyPlayingUri;
@@ -407,6 +420,10 @@
                 set: function (value) { currentlyPlayingUri = value; }
             });
 
+            Object.defineProperty(window, 'userPermissions', {
+                get: function () { return userPermissions; },
+                set: function (value) { userPermissions = value; }
+            });
 
             getQueue();
             currentlyPlaying();

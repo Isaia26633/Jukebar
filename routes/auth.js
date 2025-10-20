@@ -14,17 +14,16 @@ router.get('/login', (req, res) => {
     if (req.query.token) {
         const rawToken = req.query.token; // Get the actual raw token
         const tokenData = jwt.decode(rawToken);
-        
+
         req.session.token = tokenData;
         req.session.user = tokenData.displayName;
-        req.session.permissions = tokenData.permissions;
+        req.session.permission = tokenData.classPermissions;
         req.session.rawToken = rawToken;
         
         // Set the token for WebSocket authentication
         setRawToken(rawToken);
         
-        // console.log('Token data:', tokenData);
-        console.log('User permission:', req.session.permissions);
+        console.log('Session permission set to:', req.session.permission);
         
         db.run("INSERT INTO users (id, displayName, pin) VALUES (?, ?, ?)", [tokenData.id, tokenData.displayName, null], (err) => {
             // if the table doesnt exist, create it
