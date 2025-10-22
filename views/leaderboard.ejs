@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jukebar - Leaderboard</title>
+    <link rel="icon" href="/img/favicon.png">
+    <link rel="stylesheet" href="/styles.css">
+    <style>
+        .leaderboard-container {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+        .leaderboard-title {
+            text-align: center;
+            font-size: 2.5em;
+            color: var(--accent);
+            margin-bottom: 30px;
+        }
+        .leaderboard-item {
+            display: flex;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 15px 20px;
+            margin-bottom: 10px;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .leaderboard-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateX(5px);
+        }
+        .rank {
+            font-size: 1.5em;
+            font-weight: bold;
+            min-width: 60px;
+            color: var(--accent);
+        }
+        .rank.first { 
+            color: #FFD700;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+        .rank.second { 
+            color: #C0C0C0;
+            text-shadow: 0 0 10px rgba(192, 192, 192, 0.5);
+        }
+        .rank.third { 
+            color: #CD7F32;
+            text-shadow: 0 0 10px rgba(205, 127, 50, 0.5);
+        }
+        .user-info {
+            flex: 1;
+        }
+        .user-name {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: var(--text);
+        }
+        .play-count {
+            font-size: 1.2em;
+            color: var(--accent);
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <%- include('partials/header', { page: 'leaderboard' }) %>
+    <div class="main-content">
+        <h1 class="leaderboard-title">🏆 Leaderboard 🏆</h1>
+    <div class="leaderboard-container">
+        <div id="leaderboard"></div>
+    </div>
+
+    <script>
+        async function loadLeaderboard() {
+            try {
+                const res = await fetch('/leaderboard');
+                const data = await res.json();
+                
+                if (!data.ok) {
+                    console.error('Failed to load leaderboard');
+                    return;
+                }
+                
+                const container = document.getElementById('leaderboard');
+                container.innerHTML = '';
+                
+                data.leaderboard.forEach((user, index) => {
+                    const rank = index + 1;
+                    let rankClass = '';
+                    if (rank === 1) rankClass = 'first';
+                    else if (rank === 2) rankClass = 'second';
+                    else if (rank === 3) rankClass = 'third';
+                    
+                    const item = document.createElement('div');
+                    item.className = 'leaderboard-item';
+                    item.innerHTML = `
+                        <div class="rank ${rankClass}">#${rank}</div>
+                        <div class="user-info">
+                            <div class="user-name">${user.displayName}</div>
+                        </div>
+                        <div class="play-count">${user.total_plays} plays</div>
+                    `;
+                    container.appendChild(item);
+                });
+            } catch (error) {
+                console.error('Error loading leaderboard:', error);
+            }
+        }
+        
+        loadLeaderboard();
+        setInterval(loadLeaderboard, 30000); // Refresh every 30 seconds
+    </script>
+</body>
+</html>
