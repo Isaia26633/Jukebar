@@ -301,16 +301,24 @@
                         else {
                             data.tracks.items.forEach((item, index) => {
                                 const itemDiv = document.createElement('div');
-                                itemDiv.className = 'current-item';
-                                itemDiv.innerHTML = `
-                        <img src="${item.album.image}" alt="${item.album.name}" class="album-cover" />
-                        <div class="current-item-content">
-                            <div class="current-item-title">${item.name}</div>
-                            <div class="current-item-artist">${item.artist}</div>
-                        </div>
-                    `;
-                                CurrentDiv.appendChild(itemDiv);
-                                currentlyPlayingUri = item.id
+                                    itemDiv.className = 'current-item';
+                                    itemDiv.innerHTML = `
+                            <img src="${item.album.image}" alt="${item.album.name}" class="album-cover" />
+                            <div class="current-item-content">
+                                <div class="current-item-title">${item.name}</div>
+                                <div class="current-item-artist">${item.artist}</div>
+                                <div class="progress-wrapper">
+                                    <div class="progress-time start">0:00</div>
+                                    <div class="progress-bar" data-duration-ms="${item.duration_ms}" data-progress-ms="${item.progress_ms || 0}">
+                                        <div class="progress-fill" style="width: 0%"></div>
+                                    </div>
+                                    <div class="progress-time end">${(function(d){const s=Math.floor((d/1000)%60);const m=Math.floor((d/60000)%60);return m+':'+String(s).padStart(2,'0')})(item.duration_ms)}</div>
+                                </div>
+                            </div>
+                        `;
++
+                                    CurrentDiv.appendChild(itemDiv);
+                                    currentlyPlayingUri = item.id
                             });
                         }
                     } else {
@@ -371,6 +379,51 @@
                     });
             }
 
+
+            // Helper to format ms into M:SS
+            function msToTime(duration) {
+                const sec = Math.floor((duration / 1000) % 60);
+                const min = Math.floor((duration / (1000 * 60)) % 60);
+                return `${min}:${sec.toString().padStart(2, '0')}`;
+            }
+
+            // Progress polling and UI update
+            let lastServerProgress = 0;
+            function updateProgressFromServerData(item) {
+                const bar = document.querySelector('.progress-bar');
+                if (!bar) return;
+                bar.dataset.durationMs = item.duration_ms || bar.dataset.durationMs;
+                bar.dataset.progressMs = item.progress_ms || 0;
+                const fill = bar.querySelector('.progress-fill');
+                const duration = Number(bar.dataset.durationMs || 0);
+                const progress = Number(bar.dataset.progressMs || 0);
+                const pct = duration > 0 ? (progress / duration) * 100 : 0;
+                fill.style.width = pct + '%';
+                const startLabel = bar.parentElement.querySelector('.progress-time.start');
+                const endLabel = bar.parentElement.querySelector('.progress-time.end');
+                if (startLabel) startLabel.innerText = msToTime(progress);
+                if (endLabel) endLabel.innerText = msToTime(duration);
+                lastServerProgress = Date.now();
+            }
+
+            // local increment tick to keep progress moving smoothly
+            setInterval(() => {
+                const bar = document.querySelector('.progress-bar');
+                if (!bar) return;
+                const duration = Number(bar.dataset.durationMs || 0);
+                let progress = Number(bar.dataset.progressMs || 0);
+                // increase by 1000ms per second tick
+                progress = Math.min(duration, progress + 1000);
+                bar.dataset.progressMs = progress;
+                const fill = bar.querySelector('.progress-fill');
+                const pct = duration > 0 ? (progress / duration) * 100 : 0;
+                if (fill) fill.style.width = pct + '%';
+
+                const startLabel = bar.parentElement.querySelector('.progress-time.start');
+                if (startLabel) startLabel.innerText = msToTime(progress);
+            }, 1000);
+
+            // Progress bar is display-only (no click-to-seek)
 
             // expose functions to the global scope so page doesnt freak out
             window.onPaymentSuccess = onPaymentSuccess;

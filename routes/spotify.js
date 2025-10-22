@@ -126,6 +126,7 @@ router.get('/currentlyPlaying', async (req, res) => {
                 return res.json({ ok: true, tracks: { items: [] } });
             }
             const track = data.item;
+            const progress_ms = data.progress_ms || 0;
             const simplified = ({
                 id: track.id,
                 name: track.name,
@@ -136,7 +137,8 @@ router.get('/currentlyPlaying', async (req, res) => {
                     image: track.album.images?.[0]?.url || null
                 },
                 explicit: track.explicit,
-                duration_ms: track.duration_ms
+                duration_ms: track.duration_ms,
+                progress_ms: progress_ms
             });
             res.json({
                 ok: true,
@@ -150,6 +152,23 @@ router.get('/currentlyPlaying', async (req, res) => {
     } catch (error) {
         console.error('Get queue error:', error);
         res.status(500).json({ ok: false, error: 'Failed to get queue', details: error.message });
+    }
+});
+
+// Seek to a position (milliseconds) in the currently playing track
+router.post('/seek', async (req, res) => {
+    try {
+        await ensureSpotifyAccessToken();
+        const { position_ms } = req.body || {};
+        if (position_ms == null || isNaN(Number(position_ms))) {
+            return res.status(400).json({ ok: false, error: 'Missing or invalid position_ms' });
+        }
+        // spotify-web-api-node provides seek
+        await spotifyApi.seek(Number(position_ms));
+        res.json({ ok: true });
+    } catch (error) {
+        console.error('Seek error:', error);
+        res.status(500).json({ ok: false, error: 'Failed to seek', details: error.message });
     }
 });
 
