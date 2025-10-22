@@ -29,12 +29,8 @@ const { isAuthenticated } = require('./middleware/auth');
 const { router: authRoutes } = require('./routes/auth');
 const spotifyRoutes = require('./routes/spotify');
 const paymentRoutes = require('./routes/payment');
-<<<<<<< Updated upstream
-const { setupFormbarSocket } = require('./routes/socket');
-=======
 const leaderboardRoutes = require('./routes/leaderboard');
 // const { setupFormbarSocket } = require('./routes/socket');
->>>>>>> Stashed changes
 
 // Formbar Socket.IO connection
 const FORMBAR_ADDRESS = process.env.FORMBAR_ADDRESS;
