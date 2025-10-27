@@ -8,4 +8,7 @@ const db = new sqlite3.Database('db/database.db', (err) => {
     }
 });
 
+
+
+
 module.exports = db;

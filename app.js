@@ -47,7 +47,7 @@ const formbarSocket = ioClient(FORMBAR_ADDRESS, {
 
 console.log('Formbar socket client created, attempting connection...');
 
-setupFormbarSocket(io, formbarSocket);
+// setupFormbarSocket(io, formbarSocket);
 
 // Main routes
 app.get('/', isAuthenticated, (req, res) => {
