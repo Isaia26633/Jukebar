@@ -637,6 +637,10 @@ p {
     max-width: 800px;
     margin: 40px auto;
     padding: auto;
+    overflow-y: auto;
+    height: 75vh;
+    padding-right: 20px;
+    box-shadow: 0 8px 24px 0 rgba(0,0,0,0.25);
 }
 
 .leaderboard-title {
