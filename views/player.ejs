@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jukebar</title>
+    <title>Jukebar - Player</title>
     <link rel="icon" href="/img/favicon.png">
     <link rel="stylesheet" href="/styles.css">
     <script src="/socket.io/socket.io.js"></script>
@@ -12,14 +12,9 @@
 </head>
 
 <body>
+    <%- include('partials/header', { page: 'player' }) %>
     <div class="main-content">
-        <h1 id="jubnbark">Jukebar</h1>
-        <script>
-            const chance = Math.floor(Math.random() * 100);
-            if (chance == 67) document.getElementById('jubnbark').innerText = "Jubekar";
-        </script>
-        <p>Logged in as: <%= user %>
-        </p>
+        <p class="user-greeting">Logged in as: <strong><%= user %></strong></p>
         <div class="container">
             <div id="spotifyPlayer">
                 <form id="searchForm" onsubmit="handleSearchSubmit(event)">

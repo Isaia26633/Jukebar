@@ -7,7 +7,7 @@
     <title>Document</title>
 </head>
 
-<body>
+<body onload="getPrice()">
     <div class="card">
         <h3 style="margin-top:0">Transfer</h3>
         <div class="row"><label class="small">PIN</label>
@@ -25,8 +25,9 @@
         <div class="row price-display">
             <div class="price-content">
                 <span class="price-label">Purchase Cost:</span>
-                <span class="price-amount">50 Digipogs</span>
+                <span class="price-amount" id="price">50 Digipogs</span>
             </div>
+            <span class="discount-display" id="discount"></span>
         </div>
         <div class="actions"><button class="primary" onclick="doTransfer();">Send Transfer</button></div>
     </div>
@@ -136,6 +137,36 @@
             alert('Transfer failed: Network error');
         }
     }
+
+    async function getPrice() {
+        try {
+            const res = await fetch('/getAmount', { method: 'POST' });
+            const data = await res.json();
+            const priceRow = document.getElementsByClassName('row price-display')[0];
+            const discountEl = document.getElementById('discount');
+            if (data.ok) {
+                document.getElementById('price').innerText = `${data.amount} Digipogs`;
+                if (data.discountEligible) {
+                    priceRow.style.border = '1px solid rgba(255, 215, 0, 0.5)';
+                    priceRow.style.background = 'rgba(255, 215, 0, 0.15)';
+                    discountEl.innerText = `Leaderboard discount: -${data.discountAmount} pogs`;
+                    discountEl.style.display = '';
+                } else {
+                    priceRow.style.border = '';
+                    priceRow.style.background = '';
+                    discountEl.innerText = '';
+                    discountEl.style.display = 'none';
+                }
+            } else {
+                document.getElementById('price').innerText = 'Error loading price';
+                discountEl.innerText = '';
+                discountEl.style.display = 'none';
+            }
+        } catch (e) {
+            document.getElementById('price').innerText = 'Error loading price';
+        }
+    }
+
 </script>
 
 </html>

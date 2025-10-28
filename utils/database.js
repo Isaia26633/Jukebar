@@ -8,4 +8,12 @@ const db = new sqlite3.Database('db/database.db', (err) => {
     }
 });
 
+db.run(`CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY,
+    displayName TEXT,
+    pin INTEGER,
+    songsPlayed INTEGER DEFAULT 0
+)`);
+
+
 module.exports = db;
