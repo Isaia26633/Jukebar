@@ -11,7 +11,6 @@
 
 <body>
     <header>
-        <nav>
             <div class="logo">
                 <a href="/" id="jubnbark">Jukebar</a>
             </div>
@@ -25,7 +24,6 @@
                         class="<%= typeof page !== 'undefined' && page === 'logout' ? 'active' : '' %>"
                         onclick="if(!confirm('Do you want to log out?')) return false;">Logout</a></li>
             </ul>
-        </nav>
     </header>
     <script>
         const chance = Math.floor(Math.random() * 100);

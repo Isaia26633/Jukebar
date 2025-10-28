@@ -18,7 +18,7 @@ router.post('/transfer', async (req, res) => {
         });
 
         const userRow = await new Promise((resolve, reject) => {
-            db.get("SELECT id FROM users WHERE id = ?", [req.session.token?.id], (err, row) => {
+            db.get("SELECT id, songsPlayed FROM users WHERE id = ?", [req.session.token?.id], (err, row) => {
                 if (err) {
                     reject(err);
                 } else {
@@ -36,10 +36,10 @@ router.post('/transfer', async (req, res) => {
                 amount = Math.max(0, amount - 3);
             }
         }
-        //no discount for users who haven't played any songs
-        const songsPlayed = userRow.songsPlayed;
+        // no discount for users who haven't played any songs
+        const songsPlayed = userRow?.songsPlayed || 0;
         if (songsPlayed == 0) {
-            amount = 50;
+            amount = Number(process.env.TRANSFER_AMOUNT) || 50;
         }
 
         const { pin, reason } = req.body || {};
