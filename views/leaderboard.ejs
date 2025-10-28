@@ -68,7 +68,7 @@
 <body>
     <%- include('partials/header', { page: 'leaderboard' }) %>
     <div class="main-content">
-        <h1 class="leaderboard-title">🏆 Leaderboard 🏆</h1>
+        <h1 class="leaderboard-title">Leaderboard</h1>
     <div class="leaderboard-container">
         <div id="leaderboard"></div>
     </div>
@@ -81,6 +81,7 @@
                 
                 if (!data.ok) {
                     console.error('Failed to load leaderboard');
+                    console.log(data.error);
                     return;
                 }
                 
@@ -101,17 +102,22 @@
                         <div class="user-info">
                             <div class="user-name">${user.displayName}</div>
                         </div>
-                        <div class="play-count">${user.total_plays} plays</div>
-                    `;
+                        `;
+                        if (user.songsPlayed === 1) {
+                            item.innerHTML += `<div class="play-count">1 play</div>`;
+                        } else {
+                            item.innerHTML += `<div class="play-count">${user.songsPlayed} plays</div>`;
+                        }
+
                     container.appendChild(item);
                 });
             } catch (error) {
                 console.error('Error loading leaderboard:', error);
             }
         }
-        
+
         loadLeaderboard();
-        setInterval(loadLeaderboard, 30000); // Refresh every 30 seconds
+        setInterval(loadLeaderboard, 30000);
     </script>
 </body>
 </html>

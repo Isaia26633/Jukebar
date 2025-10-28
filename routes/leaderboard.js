@@ -4,14 +4,16 @@ const router = express.Router();
 
 router.get('/api/leaderboard', async (req, res) => {
     try {
-        // For demonstration, using static leaderboard data
-        // Example leaderboard entries matching the client-side shape
-        const leaderboardData = [
-            { displayName: 'Bobby', total_plays: 1500 },
-            { displayName: 'Jimmy', total_plays: 1200 },
-            { displayName: 'Ur mum', total_plays: 900 }
-        ];
-        // Return shape expected by the client (ok + leaderboard)
+        const db = require('../utils/database');
+        const leaderboardData = await new Promise((resolve, reject) => {
+           db.all("SELECT displayName, COALESCE(songsPlayed, 0) as songsPlayed FROM users WHERE id != 4 ORDER BY songsPlayed DESC LIMIT 5", (err, rows) => {
+               if (err) {
+                   return reject(err);
+                } 
+               resolve(rows);
+           });
+        });
+        
         res.json({ ok: true, leaderboard: leaderboardData });
     } catch (error) {
         res.status(500).json({ ok: false, message: error.message });

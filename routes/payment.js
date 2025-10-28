@@ -7,7 +7,16 @@ const FORMBAR_ADDRESS = process.env.FORMBAR_ADDRESS;
 router.post('/transfer', async (req, res) => {
     try {
         const to = process.env.RECIPIENT_ID;
-        const amount = process.env.TRANSFER_AMOUNT || 50;
+        let amount = process.env.TRANSFER_AMOUNT || 50;
+
+        //gets the top 3 users to apply a discount
+        const topUsers = await new Promise((resolve, reject) => {
+            db.all("SELECT id FROM users ORDER BY songsPlayed DESC LIMIT 3", (err, rows) => {
+                if (err) return reject(err);
+                resolve(rows.map(r => r.id));
+            });
+        });
+
         const userRow = await new Promise((resolve, reject) => {
             db.get("SELECT id FROM users WHERE id = ?", [req.session.token?.id], (err, row) => {
                 if (err) {
@@ -17,6 +26,21 @@ router.post('/transfer', async (req, res) => {
                 }
             });
         });
+
+        if (userRow && userRow.id) {
+            if (topUsers[0] === userRow.id) {
+                amount = Math.max(0, amount - 10);
+            } else if (topUsers[1] === userRow.id) {
+                amount = Math.max(0, amount - 5);
+            } else if (topUsers[2] === userRow.id) {
+                amount = Math.max(0, amount - 3);
+            }
+        }
+        //no discount for users who haven't played any songs
+        const songsPlayed = userRow.songsPlayed;
+        if (songsPlayed == 0) {
+            amount = 50;
+        }
 
         const { pin, reason } = req.body || {};
 
@@ -250,6 +274,52 @@ router.post('/claimPayment', (req, res) => {
 
 router.get('/paymentStatus', (req, res) => {
     res.json({ ok: true, hasPaid: !!req.session.hasPaid });
+});
+
+router.post('/getAmount', async (req, res) => {
+    try {
+        const db = require('../utils/database');
+        const userId = req.session.token?.id;
+        let amount = Number(process.env.TRANSFER_AMOUNT) || 50;
+        let discountEligible = false;
+        let discountAmount = 0;
+
+        // Get top 3 user IDs in order
+        const topUsers = await new Promise((resolve, reject) => {
+            db.all("SELECT id FROM users ORDER BY songsPlayed DESC LIMIT 3", (err, rows) => {
+                if (err) return reject(err);
+                resolve(rows.map(r => r.id));
+            });
+        });
+
+        // Get user's songsPlayed
+        const userRow = await new Promise((resolve, reject) => {
+            db.get("SELECT id, songsPlayed FROM users WHERE id = ?", [userId], (err, row) => {
+                if (err) reject(err);
+                else resolve(row);
+            });
+        });
+
+        if (userId && userRow && userRow.songsPlayed > 0) {
+            if (topUsers[0] === userId) {
+                amount = Math.max(0, amount - 10); //10 pogs off
+                discountEligible = true;
+                discountAmount = 10;
+            } else if (topUsers[1] === userId) { 
+                amount = Math.max(0, amount - 5);  //5 pogs off
+                discountEligible = true;
+                discountAmount = 5;
+            } else if (topUsers[2] === userId) {
+                amount = Math.max(0, amount - 3);  //3 pogs off
+                discountEligible = true;
+                discountAmount = 3;
+            }
+        }
+
+        res.json({ ok: true, amount, discountEligible, discountAmount });
+    } catch (err) {
+        res.status(500).json({ ok: false, error: err.message });
+    }
 });
 
 module.exports = router;

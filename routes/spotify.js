@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { spotifyApi, ensureSpotifyAccessToken } = require('../utils/spotify');
+const db = require('../utils/database');
 
 router.post('/search', async (req, res) => {
     try {
@@ -110,6 +111,13 @@ router.post('/addToQueue', async (req, res) => {
             console.error('Error fetching track details:', err);
             res.status(500).json({ error: `Error: ${err.message}` });
         });
+        if (response.status === 204) {
+            db.run("UPDATE users SET songsPlayed = songsPlayed + 1 WHERE id = ?", [req.session.token?.id], (err) => {
+                if (err) {
+                    console.error('Error updating songs played:', err);
+                }
+            });
+        }
 });
 
 router.get('/currentlyPlaying', async (req, res) => {
