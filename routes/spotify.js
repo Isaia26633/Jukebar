@@ -79,6 +79,9 @@ router.get('/getQueue', async (req, res) => {
 
 router.post('/addToQueue', async (req, res) => {
     await ensureSpotifyAccessToken();
+    const response = await fetch('https://api.spotify.com/v1/me/player/queue', {
+            headers: { 'Authorization': `Bearer ${spotifyApi.getAccessToken()}` }
+        });
     const { uri } = req.body;
     if (!uri) {
         return res.status(400).json({ error: "Missing track URI" });
