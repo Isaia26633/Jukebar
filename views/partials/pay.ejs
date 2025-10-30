@@ -142,25 +142,13 @@
         try {
             const res = await fetch('/getAmount', { method: 'POST' });
             const data = await res.json();
-            const priceRow = document.getElementsByClassName('row price-display')[0];
-            const discountEl = document.getElementById('discount');
             if (data.ok) {
                 document.getElementById('price').innerText = `${data.amount} Digipogs`;
-                if (data.discountEligible) {
-                    priceRow.style.border = '1px solid rgba(255, 215, 0, 0.5)';
-                    priceRow.style.background = 'rgba(255, 215, 0, 0.15)';
-                    discountEl.innerText = `Leaderboard discount: -${data.discountAmount} pogs`;
-                    discountEl.style.display = '';
-                } else {
-                    priceRow.style.border = '';
-                    priceRow.style.background = '';
-                    discountEl.innerText = '';
-                    discountEl.style.display = 'none';
-                }
+                document.getElementsByClassName('row price-display')[0].style.border = '1px solid rgba(255, 215, 0, 0.5)';
+                document.getElementsByClassName('row price-display')[0].style.background = 'rgba(255, 215, 0, 0.15)';
+                document.getElementById('discount').innerText = 'Leaderboard discount applied!';
             } else {
                 document.getElementById('price').innerText = 'Error loading price';
-                discountEl.innerText = '';
-                discountEl.style.display = 'none';
             }
         } catch (e) {
             document.getElementById('price').innerText = 'Error loading price';

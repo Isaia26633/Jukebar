@@ -1,3 +1,4 @@
+// Initialize leaderboardLastReset on server start if not set
 const express = require('express');
 const session = require('express-session');
 const dotenv = require('dotenv');
@@ -14,6 +15,7 @@ const server = http.createServer(app);
 const io = new Server(server);
 
 app.set('view engine', 'ejs');
+app.set('leaderboardLastReset', Date.now());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
@@ -82,7 +84,8 @@ app.get('/leaderboard', isAuthenticated, (req, res) => {
     try {
         res.render('leaderboard.ejs', {
             user: req.session.user,
-            userID: req.session.token?.id
+            userID: req.session.token?.id,
+            resetDate: req.app.get('leaderboardLastReset')
         });
     }
     catch (error) {
