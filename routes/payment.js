@@ -7,7 +7,7 @@ const FORMBAR_ADDRESS = process.env.FORMBAR_ADDRESS;
 router.post('/transfer', async (req, res) => {
     try {
         const to = process.env.RECIPIENT_ID;
-        let amount = process.env.TRANSFER_AMOUNT || 50;
+        const { pin, reason, amount } = req.body || {};
 
         //gets the top 3 users to apply a discount
         const topUsers = await new Promise((resolve, reject) => {
@@ -36,13 +36,13 @@ router.post('/transfer', async (req, res) => {
                 amount = Math.max(0, amount - 3);
             }
         }
+        
+        
         //no discount for users who haven't played any songs
         const songsPlayed = userRow.songsPlayed;
         if (songsPlayed == 0) {
             amount = 50;
         }
-
-        const { pin, reason } = req.body || {};
 
         console.log('Received PIN:', pin, 'Type:', typeof pin);
         console.log('User session ID:', req.session.token?.id);

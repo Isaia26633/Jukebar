@@ -29,7 +29,7 @@ router.get('/api/leaderboard', async (req, res) => {
 router.get('/api/leaderboard/update', async (req, res) => {
     try {
         const now = Date.now();
-        if (now - (req.app.get('leaderboardLastReset') || 0) > 15 * 24 * 60 * 60 * 1000) {
+        if (now - (req.app.get('leaderboardLastReset') || 0) > 7 * 24 * 60 * 60 * 1000) {
             req.app.set('leaderboardLastReset', now);
             console.log('Resetting leaderboard...');
 

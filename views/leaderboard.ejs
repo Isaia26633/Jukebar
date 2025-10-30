@@ -10,7 +10,7 @@
 <body>
     <%- include('partials/header', { page: 'leaderboard' }) %>
     <div class="leaderboard-reset-timer">
-        Next leaderboard reset in: <span id="countdown">15d 00h 00m 00s</span> 
+        Next leaderboard reset in: <span id="countdown">7d 00h 00m 00s</span> 
     </div>
     <div class="main-content">
         <h1 class="leaderboard-title">Weekly Leaderboard</h1>
@@ -84,7 +84,7 @@
         }
 
         let lastReset = Date.now();
-        const RESET_INTERVAL_MS = 15 * 24 * 60 * 60 * 1000;
+        const RESET_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000;
 
         function updateCountdown() {
             const now = Date.now();

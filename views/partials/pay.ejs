@@ -94,8 +94,10 @@
 
         if (pendingAction === 'play') {
             reason += ' - Play Track';
+            amount = 50
         } else if (pendingAction === 'skip') {
             reason += ' - Skip Track';
+            amount = 150
         } else {
             console.error('Unknown pending action:', pendingAction);
             alert('Unknown action. Please try again. Your digipogs have not been charged.');
