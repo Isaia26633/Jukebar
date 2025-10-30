@@ -280,28 +280,36 @@ router.post('/getAmount', async (req, res) => {
     try {
         const db = require('../utils/database');
         const userId = req.session.token?.id;
-        let amount = Number(process.env.TRANSFER_AMOUNT) || 50;
+        const pendingAction = req.body.pendingAction;
+        let amount;
+        let discountApplied = false;
 
-        // Get top 3 user IDs in order
-        const topUsers = await new Promise((resolve, reject) => {
-            db.all("SELECT id FROM users ORDER BY songsPlayed DESC LIMIT 3", (err, rows) => {
-                if (err) return reject(err);
-                resolve(rows.map(r => r.id));
+        if (pendingAction === 'skip') {
+            amount = 125;
+        } else {
+            amount = Number(process.env.TRANSFER_AMOUNT) || 50;
+            // Get top 3 user IDs in order
+            const topUsers = await new Promise((resolve, reject) => {
+                db.all("SELECT id FROM users ORDER BY songsPlayed DESC LIMIT 3", (err, rows) => {
+                    if (err) return reject(err);
+                    resolve(rows.map(r => r.id));
+                });
             });
-        });
-
-        // discount
-        if (userId) {
-            if (topUsers[0] === userId) {
-                amount = Math.max(0, amount - 10); //10 pogs off
-            } else if (topUsers[1] === userId) { 
-                amount = Math.max(0, amount - 5);  //5 pogs off
-            } else if (topUsers[2] === userId) {
-                amount = Math.max(0, amount - 3);  //3 pogs off
+            // discount
+            if (userId) {
+                if (topUsers[0] === userId) {
+                    amount = Math.max(0, amount - 10); //10 pogs off
+                    discountApplied = true;
+                } else if (topUsers[1] === userId) { 
+                    amount = Math.max(0, amount - 5);  //5 pogs off
+                    discountApplied = true;
+                } else if (topUsers[2] === userId) {
+                    amount = Math.max(0, amount - 3);  //3 pogs off
+                    discountApplied = true;
+                }
             }
         }
-
-        res.json({ ok: true, amount });
+        res.json({ ok: true, amount, discountApplied });
     } catch (err) {
         res.status(500).json({ ok: false, error: err.message });
     }

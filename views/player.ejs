@@ -328,6 +328,7 @@
                 function showPayment() {
                     document.getElementById('paymentModal').style.display = 'block';
                     document.querySelector('.main-content').classList.add('blurred');
+                    window.getPrice && window.getPrice(pendingAction);
                 }
 
                 function hidePayment() {

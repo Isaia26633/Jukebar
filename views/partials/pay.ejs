@@ -7,7 +7,7 @@
     <title>Document</title>
 </head>
 
-<body onload="getPrice()">
+<body>
     <div class="card">
         <h3 style="margin-top:0">Transfer</h3>
         <div class="row price-display">
@@ -97,7 +97,7 @@
             amount = 50
         } else if (pendingAction === 'skip') {
             reason += ' - Skip Track';
-            amount = 150
+            amount = 125
         } else {
             console.error('Unknown pending action:', pendingAction);
             alert('Unknown action. Please try again. Your digipogs have not been charged.');
@@ -144,21 +144,36 @@
 
     async function getPrice() {
         try {
-            const res = await fetch('/getAmount', { method: 'POST' });
+            const res = await fetch('/getAmount', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pendingAction: pendingAction })
+            });
+            if (pendingAction === 'play') {
             const data = await res.json();
             if (data.ok) {
+                document.getElementById('price').innerText = `${data.amount} Digipogs`;
                 if (data.discountApplied) {
-                    document.getElementById('price').innerText = `${data.amount} Digipogs`;
                     document.getElementsByClassName('row price-display')[0].style.border = '1px solid rgba(255, 215, 0, 0.5)';
                     document.getElementsByClassName('row price-display')[0].style.background = 'rgba(255, 215, 0, 0.15)';
                     document.getElementById('discount').innerText = 'Leaderboard discount applied!';
                 } else {
-                    document.getElementById('price').innerText = `${data.amount} Digipogs`;
+                    document.getElementById('discount').innerText = '';
                 }
             } else {
+                console.error('Error loading play price:', data.error);
                 document.getElementById('price').innerText = 'Error loading price';
             }
-        } catch (e) {
+        } else if (pendingAction === 'skip') {
+                const data = await res.json();
+                if (data.ok) {
+                    document.getElementById('price').innerText = `${data.amount} Digipogs`;
+                } else {
+                    document.getElementById('price').innerText = 'Error loading price';
+                    console.error('Error loading skip price:', data.error);
+                }
+            }
+        } catch (error) {
             document.getElementById('price').innerText = 'Error loading price';
         }
     }
