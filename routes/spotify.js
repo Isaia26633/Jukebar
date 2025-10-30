@@ -78,47 +78,44 @@ router.get('/getQueue', async (req, res) => {
 });
 
 router.post('/addToQueue', async (req, res) => {
-    await ensureSpotifyAccessToken();
-    const { uri } = req.body;
-    if (!uri) {
-        return res.status(400).json({ error: "Missing track URI" });
+    try {
+        await ensureSpotifyAccessToken();
+
+        const { uri } = req.body;
+        if (!uri) return res.status(400).json({ error: "Missing track URI" });
+
+        const trackIdPattern = /^spotify:track:([a-zA-Z0-9]{22})$/;
+        const match = uri.match(trackIdPattern);
+        if (!match) return res.status(400).json({ error: 'Invalid track URI format' });
+
+        const trackId = match[1];
+
+        const trackData = await spotifyApi.getTrack(trackId);
+        const track = trackData.body;
+        const trackInfo = {
+            name: track.name,
+            artist: track.artists.map(a => a.name).join(', '),
+            uri: track.uri,
+            cover: track.album.images[0].url,
+        };
+
+        await spotifyApi.addToQueue(uri);
+
+        db.run(
+            "UPDATE users SET songsPlayed = songsPlayed + 1 WHERE id = ?", [req.session.token?.id],
+            (err) => {
+                if (err) console.error('Error updating songs played:', err);
+            }
+        );
+
+        res.json({ success: true, message: "Track queued!", trackInfo });
+
+    } catch (err) {
+        console.error('Error in /addToQueue:', err);
+        res.status(500).json({ error: err.message });
     }
-    const trackIdPattern = /^spotify:track:([a-zA-Z0-9]{22})$/;
-    const match = uri.match(trackIdPattern);
-    if (!match) {
-        return res.status(400).json({ error: 'Invalid track URI format' });
-    }
-    const trackId = match[1];
-    spotifyApi.getTrack(trackId)
-        .then(trackData => {
-            const track = trackData.body;
-            const trackInfo = {
-                name: track.name,
-                artist: track.artists.map(a => a.name).join(', '),
-                uri: track.uri,
-                cover: track.album.images[0].url,
-            };
-            return spotifyApi.addToQueue(uri)
-                .then(() => {
-                    res.json({ success: true, message: "Track queued!", trackInfo });
-                })
-                .catch(err => {
-                    console.error('Error adding to queue:', err);
-                    res.status(500).json({ error: "Queueing failed, make sure Spotify is open" });
-                });
-        })
-        .catch(err => {
-            console.error('Error fetching track details:', err);
-            res.status(500).json({ error: `Error: ${err.message}` });
-        });
-        if (response.status === 204) {
-            db.run("UPDATE users SET songsPlayed = songsPlayed + 1 WHERE id = ?", [req.session.token?.id], (err) => {
-                if (err) {
-                    console.error('Error updating songs played:', err);
-                }
-            });
-        }
 });
+
 
 router.get('/currentlyPlaying', async (req, res) => {
     try {

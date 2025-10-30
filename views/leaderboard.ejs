@@ -6,18 +6,17 @@
     <title>Jukebar - Leaderboard</title>
     <link rel="icon" href="/img/favicon.png">
     <link rel="stylesheet" href="/styles.css">
-    <style>
-
-    </style>
 </head>
 <body>
     <%- include('partials/header', { page: 'leaderboard' }) %>
+    <div class="leaderboard-reset-timer">
+        Next leaderboard reset in: <span id="countdown">7d 00h 00m 00s</span> 
+    </div>
     <div class="main-content">
-        <h1 class="leaderboard-title">Leaderboard</h1>
+        <h1 class="leaderboard-title">Weekly Leaderboard</h1>
     <div class="leaderboard-container">
         <div id="leaderboard"></div>
     </div>
-
     <script>
         async function loadLeaderboard() {
             try {
@@ -61,8 +60,56 @@
             }
         }
 
+        async function resetLeaderboard() {
+            try {
+                await fetch('/api/leaderboard/update');
+                loadLeaderboard();
+                console.log('Leaderboard has been reset.');
+            } catch (error) {
+                console.error('Error resetting leaderboard:', error);
+            }
+        }
+
+        async function getLastReset() {
+            try {
+                const res = await fetch('/api/leaderboard/last-reset');
+                const data = await res.json();
+                if (data && data.lastReset) {
+                    return data.lastReset;
+                }
+            } catch (error) {
+                console.error('Error fetching last reset time:', error);
+            }
+            return Date.now();
+        }
+
+        let lastReset = Date.now();
+        const RESET_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000;
+
+        function updateCountdown() {
+            const now = Date.now();
+            const msLeft = Math.max(0, RESET_INTERVAL_MS - (now - lastReset));
+            const days = Math.floor(msLeft / (24 * 60 * 60 * 1000));
+            const hours = Math.floor((msLeft % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+            const minutes = Math.floor((msLeft % (60 * 60 * 1000)) / (60 * 1000));
+            const seconds = Math.floor((msLeft % (60 * 1000)) / 1000);
+            document.getElementById('countdown').textContent =
+                `${days.toString().padStart(2, '0')}d ` +
+                `${hours.toString().padStart(2, '0')}h ` +
+                `${minutes.toString().padStart(2, '0')}m ` +
+                `${seconds.toString().padStart(2, '0')}s`;
+        }
+
+        async function startCountdown() {
+            lastReset = await getLastReset();
+            updateCountdown();
+            setInterval(updateCountdown, 1000);
+        }
+
         loadLeaderboard();
         setInterval(loadLeaderboard, 30000);
+        setInterval(resetLeaderboard, 30000);
+        startCountdown();
     </script>
 </body>
 </html>

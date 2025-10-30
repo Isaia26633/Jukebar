@@ -10,11 +10,6 @@ function setRawToken(token) {
 }
 
 function setupFormbarSocket(io, formbarSocket) {
-    // Track client connections
-    io.on('connection', (socket) => {
-        socket.on('disconnect', () => {});
-    });
-
     formbarSocket.on('connect', () => {
         console.log('Connected to Formbar socket');
         
@@ -96,18 +91,18 @@ function setupFormbarSocket(io, formbarSocket) {
     }, 3000);
 
     formbarSocket.on('event', (data) => {
+        console.log('Received event from Formbar:', data);
         io.emit('formbarEvent', data);
     });
 
     formbarSocket.on('connect_error', (err) => {
         console.error('Formbar connection error:', err);
     });
-    
-    formbarSocket.on('disconnect', () => {
-        console.log('Disconnected from Formbar socket');
-    });
 }
 
+function checkPermissions(io, formbarSocket) {
+
+}
 
 // Function to get current classroom data
 function getCurrentClassroom() {

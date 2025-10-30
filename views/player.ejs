@@ -12,46 +12,67 @@
 </head>
 
 <body>
+    <div id="notification" class="notification">
+        <span class="close-btn" onclick="closeNotification()">&times;</span>
+        <p id="notification-text"></p>
+    </div>
     <%- include('partials/header', { page: 'player' }) %>
     <div class="main-content">
-        <p class="user-greeting">Logged in as: <strong><%= user %></strong></p>
+        <p class="user-greeting">Logged in as: <strong>
+            <%= user %>
+        </strong></p>
         <div class="container">
-            <div id="spotifyPlayer">
-                <form id="searchForm" onsubmit="handleSearchSubmit(event)">
-                    <div class="search-container">
-                        <input type="text" id="searchInput" placeholder="Search for a song, artist, or album" required>
-                        <button type="submit" id="searchButton">
-                            <img src="/img/search.png" alt="Search" class="search-icon">
-                        </button>
+                <div id="spotifyPlayer">
+                    <form id="searchForm" onsubmit="handleSearchSubmit(event)">
+                        <div class="search-container">
+                            <input type="text" id="searchInput" placeholder="Search for a song, artist, or album"
+                                required>
+                            <button type="submit" id="searchButton">
+                                <img src="/img/search.png" alt="Search" class="search-icon">
+                            </button>
+                        </div>
+                    </form>
+                    <div id="searchResults"></div>
+                </div>
+                <div id="songStats">
+                    <h2>Now Playing:</h2>
+                    <hr>
+                    <div id="currentlyPlaying">
                     </div>
-                </form>
-                <div id="searchResults"></div>
-            </div>
-            <div id="songStats">
-                <h2>Now Playing:</h2>
-                <hr>
-                <div id="currentlyPlaying">
-                </div>
-                <div>
-                    <button onclick="checkPaymentAndSkip()" class="skip-button">Skip</button>
-                </div>
-                <h2>Up Next:</h2>
-                <hr>
-                <div id="queue">
+                    <div>
+                        <button onclick="checkPaymentAndSkip()" class="skip-button">Skip</button>
+                    </div>
+                    <h2>Up Next:</h2>
+                    <hr>
+                    <div id="queue">
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
-    <div id="paymentModal" class="payment-modal">
-        <div class="payment-content">
-            <button onclick="hidePayment()" id="hide-payment">&times;</button>
-            <%- include('partials/pay') %>
+        <div id="paymentModal" class="payment-modal">
+            <div class="payment-content">
+                <button onclick="hidePayment()" id="hide-payment">&times;</button>
+                <%- include('partials/pay') %>
+            </div>
         </div>
-    </div>
 
-    <script>
-        (function () {
-            'use strict';
+        <script>
+            (function () {
+                'use strict';
+
+                let useJukebar = true;
+
+                const socket = io();
+
+                socket.on('auxiliaryPermission', (permission) => {
+                    console.log('Auxiliary permission:', permission);
+                    console.log('User permission:', userPermission);
+                    if (permission <= userPermission) {
+                        useJukebar = true;
+                    } else {
+                        useJukebar = false;
+                    }
+                });
 
             // Global payment status flag
             let hasPaid = <%= JSON.stringify(hasPaid || false) %>;
@@ -61,6 +82,13 @@
             let pendingTrackUri = null;
             let pendingAction = null;
             let currentlyPlayingUri = null;
+                // Global payment status flag
+                let hasPaid = <%= JSON.stringify(hasPaid || false) %>;
+                let currentID = <%= JSON.stringify(userID || null) %>;
+                let userPermission = <%= JSON.stringify(userPermission) %>;
+                let pendingTrackUri = null;
+                let pendingAction = null;
+                let currentlyPlayingUri = null;
 
             // // Listen for classroom updates to get the user's permission
             // socket.on('classUpdate', (classroomData) => {
@@ -85,145 +113,156 @@
             // });
 
 
-            function handleSearchSubmit(event) {
-                event.preventDefault();
-                searchSpotify();
-            }
-
-            async function checkPaymentAndPlay(uri) {
-                if (currentID === 37) {
-                    addToQueue(uri);
-                    return;
+                function handleSearchSubmit(event) {
+                    event.preventDefault();
+                    searchSpotify();
                 }
 
-                if (!hasPaid) {
-                    pendingTrackUri = uri;
-                    pendingAction = 'play';
-                    showPayment();
-                    return;
-                }
+                async function checkPaymentAndPlay(uri) {
+                    // Check if Jukebar is enabled
+                    if (!useJukebar) {
+                        Notify('Jukebar is currently disabled by your teacher.');
+                        return;
+                    }
 
-                // Claim payment on the server
-                try {
-                    const res = await fetch('/claimPayment', { method: 'POST' });
-                    const data = await res.json();
-                    if (!data.ok) {
+                    if (currentID === 4) {
+                        addToQueue(uri);
+                        return;
+                    }
+
+                    if (!hasPaid) {
+                        pendingTrackUri = uri;
+                        pendingAction = 'play';
+                        showPayment();
+                        return;
+                    }
+
+                    // Claim payment on the server
+                    try {
+                        const res = await fetch('/claimPayment', { method: 'POST' });
+                        const data = await res.json();
+                        if (!data.ok) {
+                            pendingTrackUri = uri;
+                            showPayment();
+                            return;
+                        }
+                        // Reset payment after claiming
+                        hasPaid = false;
+                    } catch (e) {
+                        console.error('Failed to claim payment', e);
                         pendingTrackUri = uri;
                         showPayment();
                         return;
                     }
-                    // Reset payment after claiming
-                    hasPaid = false;
-                } catch (e) {
-                    console.error('Failed to claim payment', e);
-                    pendingTrackUri = uri;
-                    showPayment();
-                    return;
+
+                    //console.log('Payment verified, playing track:', uri);
+                    //console.log('it working');
+                    addToQueue(uri);
                 }
 
-                //console.log('Payment verified, playing track:', uri);
-                //console.log('it working');
-                addToQueue(uri);
-            }
+                async function checkPaymentAndSkip() {
+                    // Check if Jukebar is enabled
+                    if (!useJukebar) {
+                        alert('Jukebar is currently disabled by your teacher.');
+                        return;
+                    }
 
-            async function checkPaymentAndSkip() {
+                    currentlyPlayingUri = `spotify:track:${currentlyPlayingUri}`;
+                    if (currentID === 4) {
+                        skip(currentlyPlayingUri);
+                        return;
+                    }
 
-                currentlyPlayingUri = `spotify:track:${currentlyPlayingUri}`;
-                if (currentID === 37) {
-                    skip(currentlyPlayingUri);
-                    return;
-                }
-
-                if (!hasPaid) {
-                    pendingTrackUri = currentlyPlayingUri;
-                    pendingAction = 'skip';
-                    showPayment();
-                    return;
-                }
-
-                // Claim payment on the server
-                try {
-                    const res = await fetch('/claimPayment', { method: 'POST' });
-                    const data = await res.json();
-                    if (!data.ok) {
-                        pendingTrackUri;
+                    if (!hasPaid) {
+                        pendingTrackUri = currentlyPlayingUri;
+                        pendingAction = 'skip';
                         showPayment();
                         return;
                     }
-                    // Reset payment after claiming
-                    hasPaid = false;
-                } catch (e) {
-                    console.error('Failed to claim payment', e);
-                    pendingTrackUri = currentlyPlayingUri;
-                    pendingAction = 'skip';
-                    showPayment();
-                    return;
+
+                    // Claim payment on the server
+                    try {
+                        const res = await fetch('/claimPayment', { method: 'POST' });
+                        const data = await res.json();
+                        if (!data.ok) {
+                            pendingTrackUri;
+                            showPayment();
+                            return;
+                        }
+                        // Reset payment after claiming
+                        hasPaid = false;
+                    } catch (e) {
+                        console.error('Failed to claim payment', e);
+                        pendingTrackUri = currentlyPlayingUri;
+                        pendingAction = 'skip';
+                        showPayment();
+                        return;
+                    }
+
+                    //console.log('Payment verified, skipping track:', currentlyPlayingUri);
+                    //console.log('it working');
+                    skip(currentlyPlayingUri);
                 }
 
-                //console.log('Payment verified, skipping track:', currentlyPlayingUri);
-                //console.log('it working');
-                skip(currentlyPlayingUri);
-            }
+                async function skip(uri) {
+                    try {
+                        const response = await fetch('/skip', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ uri })
+                        });
+                        if (!response.ok) {
+                            refund();
+                        } else {
+                            Notify('Track skipped!');
+                        }
+                    } catch (error) {
+                        console.error('Error skipping track:', error);
+                        Notify('Network error');
+                    }
+                }
 
-            async function skip(uri) {
-                try {
-                    const response = await fetch('/skip', {
+                function addToQueue(uri) {
+                    fetch('/addToQueue', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ uri })
-                    });
-                    if (!response.ok) {
-                        refund();
-                    } else {
-                        alert('Track skipped!');
-                    }
-                } catch (error) {
-                    console.error('Error skipping track:', error);
-                    alert('Network error');
-                }
-            }
-
-            function addToQueue(uri) {
-                fetch('/addToQueue', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ uri })
-                })
-                    .then(response => {
-                        if (response.ok) {
-                            alert('Track added to queue!');
-                        } else {
-                            return response.json().then(data => {
-                                refund();
-                            });
-                        }
                     })
-                    .catch(error => {
-                        console.log('oopsies!')
-                        console.error('Error adding track to queue:', error);
-                        alert('Network error');
-                    });
-            }
+                        .then(response => {
+                            if (response.ok) {
+                                Notify('Track added to queue!');
+                            } else {
+                                return response.json().then(data => {
+                                    refund();
+                                });
+                            }
+                        })
+                        .catch(error => {
+                            console.log('oopsies!')
+                            console.error('Error adding track to queue:', error);
+                            Notify('Network error');
+                        });
+                }
 
-            async function searchSpotify() {
-                const query = document.getElementById('searchInput').value;
-                if (!query) return;
+                async function searchSpotify() {
+                    const query = document.getElementById('searchInput').value;
+                    if (!query) return;
 
-                try {
-                    const response = await fetch('/search', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ query })
-                    });
-                    const data = await response.json();
-                    const resultsDiv = document.getElementById('searchResults');
-                    resultsDiv.innerHTML = '';
+                    try {
+                        const response = await fetch('/search', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ query })
+                        });
+                        const data = await response.json();
+                        const resultsDiv = document.getElementById('searchResults');
+                        resultsDiv.innerHTML = '';
 
-                    if (data.tracks && data.tracks.items.length > 0) {
-                        data.tracks.items.forEach(track => {
-                            const trackDiv = document.createElement('div');
-                            trackDiv.className = 'search-result-item';
-                            trackDiv.innerHTML = `
+                        if (data.tracks && data.tracks.items.length > 0) {
+                            data.tracks.items.forEach(track => {
+                                const trackDiv = document.createElement('div');
+                                trackDiv.className = 'search-result-item';
+                                trackDiv.innerHTML = `
                         <img src="${track.album.image}" alt="${track.album.name}" class="album-cover" />
                         <div class="search-result-content">
                             <div class="search-result-title">${track.name}</div>
@@ -231,51 +270,51 @@
                         </div>
                         <button onclick="checkPaymentAndPlay('${track.uri}')" class="play-button">Play</button>
                     `;
-                            resultsDiv.appendChild(trackDiv);
-                        });
-                    } else {
-                        resultsDiv.innerHTML = '<p>No results found.</p>';
-                    }
-                } catch (error) {
-                    console.error('Error searching Spotify:', error);
-                }
-            }
-
-            async function getQueue() {
-                try {
-                    const response = await fetch('/getQueue', {
-                        method: 'GET',
-                        headers: { 'Content-Type': 'application/json' }
-                    });
-                    const data = await response.json();
-                    if (data.ok) {
-                        //console.log('Queue data:', data.tracks.items);
-                        const queueDiv = document.getElementById('queue');
-                        queueDiv.innerHTML = '';
-                        if (data.tracks.items.length == 0) {
-                            const queueDiv = document.getElementById('queue');
-                            queueDiv.innerHTML = '<p>No tracks in queue.</p>';
+                                resultsDiv.appendChild(trackDiv);
+                            });
                         } else {
-                            data.tracks.items.forEach((item, index) => {
-                                const itemDiv = document.createElement('div');
-                                itemDiv.className = 'queue-item';
-                                itemDiv.innerHTML = `
+                            resultsDiv.innerHTML = '<p>No results found.</p>';
+                        }
+                    } catch (error) {
+                        console.error('Error searching Spotify:', error);
+                    }
+                }
+
+                async function getQueue() {
+                    try {
+                        const response = await fetch('/getQueue', {
+                            method: 'GET',
+                            headers: { 'Content-Type': 'application/json' }
+                        });
+                        const data = await response.json();
+                        if (data.ok) {
+                            //console.log('Queue data:', data.tracks.items);
+                            const queueDiv = document.getElementById('queue');
+                            queueDiv.innerHTML = '';
+                            if (data.tracks.items.length == 0) {
+                                const queueDiv = document.getElementById('queue');
+                                queueDiv.innerHTML = '<p>No tracks in queue.</p>';
+                            } else {
+                                data.tracks.items.forEach((item, index) => {
+                                    const itemDiv = document.createElement('div');
+                                    itemDiv.className = 'queue-item';
+                                    itemDiv.innerHTML = `
                         <img src="${item.album.image}" alt="${item.album.name}" class="album-cover" />
                         <div class="queue-item-content">
                             <div class="queue-item-title">${item.name}</div>
                             <div class="queue-item-artist">${item.artist}</div>
                         </div>
                     `;
-                                queueDiv.appendChild(itemDiv);
-                            });
+                                    queueDiv.appendChild(itemDiv);
+                                });
+                            }
+                        } else {
+                            console.error('Failed to get queue:', data.error);
                         }
-                    } else {
-                        console.error('Failed to get queue:', data.error);
+                    } catch (error) {
+                        console.error('Error fetching queue:', error);
                     }
-                } catch (error) {
-                    console.error('Error fetching queue:', error);
                 }
-            }
 
             async function currentlyPlaying() {
                 try {
@@ -296,24 +335,16 @@
                         else {
                             data.tracks.items.forEach((item, index) => {
                                 const itemDiv = document.createElement('div');
-                                    itemDiv.className = 'current-item';
-                                    itemDiv.innerHTML = `
-                            <img src="${item.album.image}" alt="${item.album.name}" class="album-cover" />
-                            <div class="current-item-content">
-                                <div class="current-item-title">${item.name}</div>
-                                <div class="current-item-artist">${item.artist}</div>
-                                <div class="progress-wrapper">
-                                    <div class="progress-time start">0:00</div>
-                                    <div class="progress-bar" data-duration-ms="${item.duration_ms}" data-progress-ms="${item.progress_ms || 0}">
-                                        <div class="progress-fill" style="width: 0%"></div>
-                                    </div>
-                                    <div class="progress-time end">${(function(d){const s=Math.floor((d/1000)%60);const m=Math.floor((d/60000)%60);return m+':'+String(s).padStart(2,'0')})(item.duration_ms)}</div>
-                                </div>
-                            </div>
-                        `;
-+
-                                    CurrentDiv.appendChild(itemDiv);
-                                    currentlyPlayingUri = item.id
+                                itemDiv.className = 'current-item';
+                                itemDiv.innerHTML = `
+                        <img src="${item.album.image}" alt="${item.album.name}" class="album-cover" />
+                        <div class="current-item-content">
+                            <div class="current-item-title">${item.name}</div>
+                            <div class="current-item-artist">${item.artist}</div>
+                        </div>
+                    `;
+                                CurrentDiv.appendChild(itemDiv);
+                                currentlyPlayingUri = item.id
                             });
                         }
                     } else {
@@ -324,147 +355,105 @@
                 }
             }
 
-            function showPayment() {
-                document.getElementById('paymentModal').style.display = 'block';
-                document.querySelector('.main-content').classList.add('blurred');
-            }
+                function showPayment() {
+                    document.getElementById('paymentModal').style.display = 'block';
+                    document.querySelector('.main-content').classList.add('blurred');
+                    window.getPrice && window.getPrice(pendingAction);
+                }
 
-            function hidePayment() {
-                document.getElementById('paymentModal').style.display = 'none';
-                document.querySelector('.main-content').classList.remove('blurred');
+                function hidePayment() {
+                    document.getElementById('paymentModal').style.display = 'none';
+                    document.querySelector('.main-content').classList.remove('blurred');
 
-                // Handle pending actions after payment
-                if (hasPaid && pendingAction) {
-                    if (pendingAction === 'play' && pendingTrackUri) {
-                        const uri = pendingTrackUri;
-                        pendingTrackUri = null;
-                        pendingAction = null;
-                        checkPaymentAndPlay(uri);
-                    } else if (pendingAction === 'skip') {
-                        pendingAction = null;
-                        checkPaymentAndSkip();
+                    // Handle pending actions after payment
+                    if (hasPaid && pendingAction) {
+                        if (pendingAction === 'play' && pendingTrackUri) {
+                            const uri = pendingTrackUri;
+                            pendingTrackUri = null;
+                            pendingAction = null;
+                            checkPaymentAndPlay(uri);
+                        } else if (pendingAction === 'skip') {
+                            pendingAction = null;
+                            checkPaymentAndSkip();
+                        }
                     }
                 }
-            }
 
-            function onPaymentSuccess() {
-                hasPaid = true;
-                hidePayment();
-            }
+                function onPaymentSuccess() {
+                    hasPaid = true;
+                    hidePayment();
+                }
 
-            function refund() {
-                fetch('/refund', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ reason: "Jukebar refund" })
-                })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.ok) {
-                            alert('Spotify error occurred. Your digipogs have been refunded.');
-                            //console.log('Refund successful:', data);
-                        } else {
-                            alert('Refund failed: ' + (data.error || 'Unknown error'));
-                            console.error('Refund failed:', data.error);
-                        }
+                function refund() {
+                    fetch('/refund', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ reason: "Jukebar refund" })
                     })
-                    .catch(error => {
-                        alert('Network error during refund. Please contact support.');
-                        console.error('Error during refund:', error);
-                    });
-            }
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.ok) {
+                                Notify('Spotify error occurred. Your digipogs have been refunded.');
+                                //console.log('Refund successful:', data);
+                            } else {
+                                Notify('Refund failed: ' + (data.error || 'Unknown error'));
+                                console.error('Refund failed:', data.error);
+                            }
+                        })
+                        .catch(error => {
+                            Notify('Network error during refund. Please contact support.');
+                            console.error('Error during refund:', error);
+                        });
+                }
 
 
-            // Helper to format ms into M:SS
-            function msToTime(duration) {
-                const sec = Math.floor((duration / 1000) % 60);
-                const min = Math.floor((duration / (1000 * 60)) % 60);
-                return `${min}:${sec.toString().padStart(2, '0')}`;
-            }
+                // expose functions to the global scope so page doesnt freak out
+                window.onPaymentSuccess = onPaymentSuccess;
+                window.hidePayment = hidePayment;
+                window.handleSearchSubmit = handleSearchSubmit;
+                window.checkPaymentAndPlay = checkPaymentAndPlay;
+                window.checkPaymentAndSkip = checkPaymentAndSkip;
+                window.Notify = Notify;
+                window.closeNotification = closeNotification;
 
-            // Progress polling and UI update
-            let lastServerProgress = 0;
-            function updateProgressFromServerData(item) {
-                const bar = document.querySelector('.progress-bar');
-                if (!bar) return;
-                bar.dataset.durationMs = item.duration_ms || bar.dataset.durationMs;
-                bar.dataset.progressMs = item.progress_ms || 0;
-                const fill = bar.querySelector('.progress-fill');
-                const duration = Number(bar.dataset.durationMs || 0);
-                const progress = Number(bar.dataset.progressMs || 0);
-                const pct = duration > 0 ? (progress / duration) * 100 : 0;
-                fill.style.width = pct + '%';
-                const startLabel = bar.parentElement.querySelector('.progress-time.start');
-                const endLabel = bar.parentElement.querySelector('.progress-time.end');
-                if (startLabel) startLabel.innerText = msToTime(progress);
-                if (endLabel) endLabel.innerText = msToTime(duration);
-                lastServerProgress = Date.now();
-            }
+                //use getters and setters to keep track of the variables
+                Object.defineProperty(window, 'hasPaid', {
+                    get: function () { return hasPaid; },
+                    set: function (value) { hasPaid = value; }
+                });
 
-            // local increment tick to keep progress moving smoothly
-            setInterval(() => {
-                const bar = document.querySelector('.progress-bar');
-                if (!bar) return;
-                const duration = Number(bar.dataset.durationMs || 0);
-                let progress = Number(bar.dataset.progressMs || 0);
-                // increase by 1000ms per second tick
-                progress = Math.min(duration, progress + 1000);
-                bar.dataset.progressMs = progress;
-                const fill = bar.querySelector('.progress-fill');
-                const pct = duration > 0 ? (progress / duration) * 100 : 0;
-                if (fill) fill.style.width = pct + '%';
+                Object.defineProperty(window, 'currentID', {
+                    get: function () { return currentID; },
+                    set: function (value) { currentID = value; }
+                });
 
-                const startLabel = bar.parentElement.querySelector('.progress-time.start');
-                if (startLabel) startLabel.innerText = msToTime(progress);
-            }, 1000);
+                Object.defineProperty(window, 'pendingTrackUri', {
+                    get: function () { return pendingTrackUri; },
+                    set: function (value) { pendingTrackUri = value; }
+                });
 
-            // Progress bar is display-only (no click-to-seek)
+                Object.defineProperty(window, 'pendingAction', {
+                    get: function () { return pendingAction; },
+                    set: function (value) { pendingAction = value; }
+                });
 
-            // expose functions to the global scope so page doesnt freak out
-            window.onPaymentSuccess = onPaymentSuccess;
-            window.hidePayment = hidePayment;
-            window.handleSearchSubmit = handleSearchSubmit;
-            window.checkPaymentAndPlay = checkPaymentAndPlay;
-            window.checkPaymentAndSkip = checkPaymentAndSkip;
-
-            //use getters and setters to keep track of the variables
-            Object.defineProperty(window, 'hasPaid', {
-                get: function () { return hasPaid; },
-                set: function (value) { hasPaid = value; }
-            });
-
-            Object.defineProperty(window, 'currentID', {
-                get: function () { return currentID; },
-                set: function (value) { currentID = value; }
-            });
-
-            Object.defineProperty(window, 'pendingTrackUri', {
-                get: function () { return pendingTrackUri; },
-                set: function (value) { pendingTrackUri = value; }
-            });
-
-            Object.defineProperty(window, 'pendingAction', {
-                get: function () { return pendingAction; },
-                set: function (value) { pendingAction = value; }
-            });
-
-            Object.defineProperty(window, 'currentlyPlayingUri', {
-                get: function () { return currentlyPlayingUri; },
-                set: function (value) { currentlyPlayingUri = value; }
-            });
+                Object.defineProperty(window, 'currentlyPlayingUri', {
+                    get: function () { return currentlyPlayingUri; },
+                    set: function (value) { currentlyPlayingUri = value; }
+                });
 
             Object.defineProperty(window, 'userPermissions', {
                 get: function () { return userPermissions; },
                 set: function (value) { userPermissions = value; }
             });
 
-            getQueue();
-            currentlyPlaying();
-            setInterval(getQueue, 7000);
-            setInterval(currentlyPlaying, 7000);
-            setInterval(currentlyPlaying, 7000);
-        })();
-    </script>
+                getQueue();
+                currentlyPlaying();
+                setInterval(getQueue, 7000);
+                setInterval(currentlyPlaying, 7000);
+                setInterval(currentlyPlaying, 7000);
+            })();
+        </script>
 </body>
 
 </html>
