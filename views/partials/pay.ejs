@@ -111,7 +111,7 @@
         }
 
         try {
-            const result = await post('/transfer', { pin, reason });
+            const result = await post('/transfer', { pin, reason, amount });
             //console.log('Transfer result:', result); // Debug log
 
             // Check for success in different possible formats

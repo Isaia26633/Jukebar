@@ -7,7 +7,9 @@ const FORMBAR_ADDRESS = process.env.FORMBAR_ADDRESS;
 router.post('/transfer', async (req, res) => {
     try {
         const to = process.env.RECIPIENT_ID;
-        const { pin, reason, amount } = req.body || {};
+    let { pin, reason, amount } = req.body || {};
+    amount = Number(amount)
+    const pendingAction = req.body.pendingAction;
 
         //gets the top 3 users to apply a discount
         const topUsers = await new Promise((resolve, reject) => {
@@ -27,30 +29,37 @@ router.post('/transfer', async (req, res) => {
             });
         });
 
-        if (userRow && userRow.id) {
-            if (topUsers[0] === userRow.id) {
-                amount = Math.max(0, amount - 10);
-            } else if (topUsers[1] === userRow.id) {
-                amount = Math.max(0, amount - 5);
-            } else if (topUsers[2] === userRow.id) {
-                amount = Math.max(0, amount - 3);
+        // Handle skip action: always set to 125, no discounts
+        if (pendingAction === 'skip') {
+            amount = 125;
+        } else {
+            if (userRow && userRow.id) {
+                if (topUsers[0] === userRow.id) {
+                    amount = Math.max(0, amount - 10);
+                } else if (topUsers[1] === userRow.id) {
+                    amount = Math.max(0, amount - 5);
+                } else if (topUsers[2] === userRow.id) {
+                    amount = Math.max(0, amount - 3);
+                }
             }
-        }
-        
-        
-        //no discount for users who haven't played any songs
-        const songsPlayed = userRow.songsPlayed;
-        if (songsPlayed == 0) {
-            amount = 50;
+            // no discount for users who haven't played any songs
+            const songsPlayed = userRow.songsPlayed;
+            if (songsPlayed == 0) {
+                amount = 50;
+            }
         }
 
         console.log('Received PIN:', pin, 'Type:', typeof pin);
         console.log('User session ID:', req.session.token?.id);
         console.log('User row from DB:', userRow);
 
-        if (!userRow || !userRow.id || !to || !amount || pin == null) {
-            res.status(400).json({ ok: false, error: 'Missing required fields or user not found' });
-            return;
+        if (!userRow || !userRow.id) {
+            console.error('Transfer failed: User not found in database. Session token:', req.session.token);
+            return res.status(400).json({ ok: false, error: 'User not found. Please log in again or contact support.' });
+        }
+        if (!to || !amount || pin == null) {
+            console.error('Transfer failed: Missing required fields.', { to, amount, pin });
+            return res.status(400).json({ ok: false, error: 'Missing required fields for transfer. Please try again.' });
         }
         const payload = {
             from: Number(userRow.id),
