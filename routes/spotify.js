@@ -78,6 +78,12 @@ router.get('/getQueue', async (req, res) => {
 });
 
 router.post('/addToQueue', async (req, res) => {
+    if (!req.session || !req.session.token || !req.session.token.id) {
+        return res.status(401).json({ ok: false, error: 'Unauthorized' });
+    }
+    if (!req.session.hasPaid && req.session.token.id !== 4) {
+        return res.status(403).json({ ok: false, error: 'Payment required to add to queue' });
+    }
     try {
         await ensureSpotifyAccessToken();
 
@@ -108,7 +114,11 @@ router.post('/addToQueue', async (req, res) => {
             }
         );
 
-        res.json({ success: true, message: "Track queued!", trackInfo });
+        // Clear payment flag after adding to queue
+        req.session.hasPaid = false;
+        req.session.save(() => {
+            res.json({ success: true, message: "Track queued!", trackInfo });
+        });
 
     } catch (err) {
         console.error('Error in /addToQueue:', err);
@@ -159,10 +169,20 @@ router.get('/currentlyPlaying', async (req, res) => {
 });
 
 router.post('/skip', async (req, res) => {
+    if (!req.session || !req.session.token || !req.session.token.id) {
+        return res.status(401).json({ ok: false, error: 'Unauthorized' });
+    }
+    if (!req.session.hasPaid && req.session.token.id !== 4) {
+        return res.status(403).json({ ok: false, error: 'Payment required to skip' });
+    }
     try {
         await ensureSpotifyAccessToken();
         await spotifyApi.skipToNext();
-        res.json({ ok: true });
+        // Clear payment flag after skip
+        req.session.hasPaid = false;
+        req.session.save(() => {
+            res.json({ ok: true });
+        });
     } catch (error) {
         console.error('Skip error:', error);
         res.status(500).json({ ok: false, error: 'Failed to skip', details: error.message });

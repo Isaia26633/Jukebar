@@ -8,7 +8,7 @@ const FORMBAR_ADDRESS = process.env.FORMBAR_ADDRESS;
 const API_KEY = process.env.API_KEY || '';
 const port = process.env.PORT || 5000;
 const AUTH_URL = `${FORMBAR_ADDRESS}/oauth`;
-const THIS_URL = `http://localhost:${port}/login`;
+const THIS_URL = `http://172.16.3.115:${port}/login`;
 
 router.get('/login', (req, res) => {
     if (req.query.token) {
@@ -71,8 +71,8 @@ function getRawToken(req) {
 }
 
 router.get('/logout', (req, res) => {
-    req.session.destroy();
     res.redirect(`${AUTH_URL}?redirectURL=${THIS_URL}`);
+    req.session.destroy();
 });
 
 module.exports = { router, getRawToken };
