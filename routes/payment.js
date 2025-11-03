@@ -7,9 +7,8 @@ const FORMBAR_ADDRESS = process.env.FORMBAR_ADDRESS;
 router.post('/transfer', async (req, res) => {
     try {
         const to = process.env.OWNER_ID;
-    let { pin, reason, amount } = req.body || {};
-    amount = Number(amount)
-    const pendingAction = req.body.pendingAction;
+    let { pin, reason } = req.body || {};
+    const pendingAction = req.body?.pendingAction;
 
         //gets the top 3 users to apply a discount
         const topUsers = await new Promise((resolve, reject) => {
@@ -33,10 +32,13 @@ router.post('/transfer', async (req, res) => {
             });
         });
 
-        // Handle skip action: always set to 125, no discounts
+        // Compute amount on the server; do NOT trust client-provided amount
+        let amount;
         if (pendingAction === 'skip') {
+            // Skips are a fixed cost (no discounts)
             amount = 125;
         } else {
+            amount = Number(process.env.TRANSFER_AMOUNT) || 50;
             if (userRow && userRow.id) {
                 if (topUsers[0] === userRow.id) {
                     amount = Math.max(0, amount - 10);
@@ -154,10 +156,9 @@ router.post('/transfer', async (req, res) => {
 
 router.post('/refund', async (req, res) => {
     try {
-        const from = process.env.OWNER_ID;
-        const amount = process.env.TRANSFER_AMOUNT || 50;
-        const reason = "Jukebar refund"
-        const pin = process.env.PIN
+        const from = Number(process.env.OWNER_ID);
+        const reason = "Jukebar refund";
+        const pin = process.env.PIN;
         const userRow = await new Promise((resolve, reject) => {
             db.get("SELECT id FROM users WHERE id = ?", [req.session.token?.id], (err, row) => {
                 if (err) {
@@ -168,10 +169,42 @@ router.post('/refund', async (req, res) => {
             });
         });
 
-        if (!userRow || !userRow.id || !from || !amount || pin == null) {
-            res.status(400).json({ ok: false, error: 'Missing required fields or user not found' });
-            return;
+        // Basic authz checks
+        if (!userRow || !userRow.id) {
+            return res.status(401).json({ ok: false, error: 'Not authenticated' });
         }
+        if (!from || pin == null) {
+            return res.status(500).json({ ok: false, error: 'Refund misconfigured on server' });
+        }
+
+        // Require a recent, unclaimed payment to exist in session and prevent double-refunds
+        const lastPayment = req.session.payment || null;
+        const now = Date.now();
+        const refundableWindowMs = 15 * 60 * 1000; // 15 minutes
+
+        if (!lastPayment) {
+            return res.status(400).json({ ok: false, error: 'No payment found to refund' });
+        }
+        if (lastPayment.refundedAt) {
+            return res.status(409).json({ ok: false, error: 'Payment already refunded' });
+        }
+        if (lastPayment.from !== Number(userRow.id) || lastPayment.to !== from) {
+            return res.status(403).json({ ok: false, error: 'Payment does not belong to this user' });
+        }
+        if (!req.session.hasPaid) {
+            // If the service has already claimed the payment, do not allow refund via this endpoint
+            return res.status(409).json({ ok: false, error: 'Payment already claimed' });
+        }
+        if (!lastPayment.at || (now - lastPayment.at) > refundableWindowMs) {
+            return res.status(408).json({ ok: false, error: 'Refund window expired' });
+        }
+
+        // Refund the exact amount of the last payment
+        const amount = Number(lastPayment.amount);
+        if (!amount || amount <= 0) {
+            return res.status(400).json({ ok: false, error: 'Invalid payment amount for refund' });
+        }
+
         const payload = {
             from: Number(from),
             to: Number(userRow.id),
@@ -193,12 +226,9 @@ router.post('/refund', async (req, res) => {
 
         // Check if the transfer was successful based on the response
         if (transferResult.ok && responseJson) {
-            req.session.payment = {
-                from: Number(from),
-                to: Number(userRow.id),
-                amount: Number(amount),
-                at: Date.now()
-            };
+            // Mark refunded and reset payment flag
+            req.session.payment.refundedAt = Date.now();
+            req.session.hasPaid = false;
             return req.session.save(() => {
                 res.json({ ok: true, message: 'Refund successful', response: responseJson });
             });
@@ -337,10 +367,12 @@ router.post('/getAmount', async (req, res) => {
 
 // TEMPORARY TEST ENDPOINT - REMOVE IN PRODUCTION
 router.post('/testPayment', (req, res) => {
+    if (process.env.NODE_ENV === 'production') {
+        return res.status(403).json({ ok: false, error: 'Disabled in production' });
+    }
     if (!req.session || !req.session.token) {
         return res.status(401).json({ ok: false, error: 'Not logged in' });
     }
-    
     req.session.hasPaid = true;
     req.session.save(() => {
         res.json({ ok: true, message: 'Payment flag set for testing' });

@@ -31,12 +31,16 @@
             <label class="small">Please note: If you change your pin you will need to re-enter it for future
                 transactions.</label>
         </div>
-        <div class="actions"><button class="primary" onclick="doTransfer();">Send Transfer</button></div>
+        <div class="actions"><button class="primary" id="transferBtn">Send Transfer</button></div>
     </div>
 </body>
 <script>
-    const pinInput = document.getElementById('pin');
-    const savePIN = document.getElementById('savePIN');
+    (function() {
+        'use strict';
+        
+        const pinInput = document.getElementById('pin');
+        const savePIN = document.getElementById('savePIN');
+        const transferBtn = document.getElementById('transferBtn');
 
     // Load saved PIN on page load
     async function loadSavedPin() {
@@ -77,107 +81,106 @@
         const text = await res.text();
         try { return JSON.parse(text); } catch { return { raw: text }; }
     }
-    async function doTransfer() {
-        const pin = pinInput.value; // Get the current PIN value from input
+        async function doTransfer() {
+            const pin = pinInput.value;
+            const state = window.getPlayerState?.() || {};
+            const pendingAction = state.pendingAction;
 
-        // Save PIN if checkbox is checked
-        if (savePIN.checked) {
-            try {
-                await post('/savePin', { pin });
-                //console.log('PIN saved successfully');
-            } catch (error) {
-                console.error('Failed to save PIN:', error);
-            }
-        }
-
-        let reason = 'Jukebar Payment';
-
-        if (pendingAction === 'play') {
-            reason += ' - Play Track';
-            amount = 50
-        } else if (pendingAction === 'skip') {
-            reason += ' - Skip Track';
-            amount = 125
-        } else {
-            console.error('Unknown pending action:', pendingAction);
-            alert('Unknown action. Please try again. Your digipogs have not been charged.');
-            return;
-        }
-
-        // Validate required fields
-        if (!pin) {
-            alert('Please enter your PIN.');
-            return;
-        }
-
-        try {
-            const result = await post('/transfer', { pin, reason, amount });
-            //console.log('Transfer result:', result); // Debug log
-
-            // Check for success in different possible formats
-            const isSuccess = result.ok === true || result.success === true || result.status === 'success' ||
-                (result.error === undefined && result.token !== undefined);
-
-            if (isSuccess) {
-                // Update the global flag directly (not window.parent since this is a partial)
-                if (typeof hasPaid !== 'undefined') {
-                    hasPaid = true;
-                    //console.log('Payment successful - hasPaid set to:', hasPaid);
-                } else {
-                    console.error('hasPaid variable not found in global scope');
+            // Save PIN if checkbox is checked
+            if (savePIN.checked) {
+                try {
+                    await post('/savePin', { pin });
+                } catch (error) {
+                    console.error('Failed to save PIN:', error);
                 }
-                hidePayment();
-                return;
-            } else {
-                // Get the error message in order of preference
-                let errorMessage = result.error || result.message || 'Unknown error';
-
-                //console.log('Final error message:', errorMessage);
-                alert('Transfer failed: ' + errorMessage);
-                console.error('Transfer failed:', result);
             }
-        } catch (error) {
-            console.error('Transfer error:', error);
-            alert('Transfer failed: Network error');
-        }
-    }
 
-    async function getPrice() {
-        try {
-            const res = await fetch('/getAmount', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ pendingAction: pendingAction })
-            });
+            let reason = 'Jukebar Payment';
+            let amount;
+
             if (pendingAction === 'play') {
-            const data = await res.json();
-            if (data.ok) {
-                document.getElementById('price').innerText = `${data.amount} Digipogs`;
-                if (data.discountApplied) {
-                    document.getElementsByClassName('row price-display')[0].style.border = '1px solid rgba(255, 215, 0, 0.5)';
-                    document.getElementsByClassName('row price-display')[0].style.background = 'rgba(255, 215, 0, 0.15)';
-                    document.getElementById('discount').innerText = 'Leaderboard discount applied!';
-                } else {
-                    document.getElementById('discount').innerText = '';
-                }
+                reason += ' - Play Track';
+                amount = 50;
+            } else if (pendingAction === 'skip') {
+                reason += ' - Skip Track';
+                amount = 125;
             } else {
-                console.error('Error loading play price:', data.error);
-                document.getElementById('price').innerText = 'Error loading price';
+                console.error('Unknown pending action:', pendingAction);
+                alert('Unknown action. Please try again. Your digipogs have not been charged.');
+                return;
             }
-        } else if (pendingAction === 'skip') {
+
+            if (!pin) {
+                alert('Please enter your PIN.');
+                return;
+            }
+
+            try {
+                const result = await post('/transfer', { pin, reason, pendingAction });
+
+                const isSuccess = result.ok === true || result.success === true || result.status === 'success' ||
+                    (result.error === undefined && result.token !== undefined);
+
+                if (isSuccess) {
+                    // Notify player.ejs via custom event
+                    window.setPlayerState?.({ hasPaid: true });
+                    window.dispatchEvent(new CustomEvent('paymentSuccess'));
+                    window.dispatchEvent(new CustomEvent('hidePaymentModal'));
+                    return;
+                } else {
+                    let errorMessage = result.error || result.message || 'Unknown error';
+                    alert('Transfer failed: ' + errorMessage);
+                    console.error('Transfer failed:', result);
+                }
+            } catch (error) {
+                console.error('Transfer error:', error);
+                alert('Transfer failed: Network error');
+            }
+        }
+
+        async function getPrice() {
+            const state = window.getPlayerState?.() || {};
+            const pendingAction = state.pendingAction;
+
+            try {
+                const res = await fetch('/getAmount', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ pendingAction })
+                });
                 const data = await res.json();
+
                 if (data.ok) {
                     document.getElementById('price').innerText = `${data.amount} Digipogs`;
+                    
+                    if (pendingAction === 'play' && data.discountApplied) {
+                        document.getElementsByClassName('row price-display')[0].style.border = '1px solid rgba(255, 215, 0, 0.5)';
+                        document.getElementsByClassName('row price-display')[0].style.background = 'rgba(255, 215, 0, 0.15)';
+                        document.getElementById('discount').innerText = 'Leaderboard discount applied!';
+                    } else {
+                        document.getElementById('discount').innerText = '';
+                    }
                 } else {
+                    console.error('Error loading price:', data.error);
                     document.getElementById('price').innerText = 'Error loading price';
-                    console.error('Error loading skip price:', data.error);
                 }
+            } catch (error) {
+                console.error('Error fetching price:', error);
+                document.getElementById('price').innerText = 'Error loading price';
             }
-        } catch (error) {
-            document.getElementById('price').innerText = 'Error loading price';
         }
-    }
 
+        // Wire up event listeners
+        transferBtn?.addEventListener('click', doTransfer);
+        
+        // Listen for price update requests from player.ejs
+        window.addEventListener('updatePrice', (e) => {
+            getPrice();
+        });
+
+        // Load saved PIN when included
+        loadSavedPin();
+    })();
 </script>
 
 </html>

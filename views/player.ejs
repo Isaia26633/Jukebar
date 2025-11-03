@@ -13,7 +13,7 @@
 
 <body>
     <div id="notification" class="notification">
-        <span class="close-btn" onclick="closeNotification()">&times;</span>
+        <span class="close-btn" id="close-notification">&times;</span>
         <p id="notification-text"></p>
     </div>
     <%- include('partials/header', { page: 'player' }) %>
@@ -23,7 +23,7 @@
         </strong></p>
         <div class="container">
                 <div id="spotifyPlayer">
-                    <form id="searchForm" onsubmit="handleSearchSubmit(event)">
+                    <form id="searchForm">
                         <div class="search-container">
                             <input type="text" id="searchInput" placeholder="Search for a song, artist, or album"
                                 required>
@@ -40,7 +40,7 @@
                     <div id="currentlyPlaying">
                     </div>
                     <div>
-                        <button onclick="checkPaymentAndSkip()" class="skip-button">Skip</button>
+                        <button id="skip-button" class="skip-button">Skip</button>
                     </div>
                     <h2>Up Next:</h2>
                     <hr>
@@ -51,7 +51,7 @@
         </div>
         <div id="paymentModal" class="payment-modal">
             <div class="payment-content">
-                <button onclick="hidePayment()" id="hide-payment">&times;</button>
+                <button id="hide-payment">&times;</button>
                 <%- include('partials/pay') %>
             </div>
         </div>
@@ -201,7 +201,7 @@
                             <div class="search-result-title">${track.name}</div>
                             <div class="search-result-artist">${track.artist}</div>
                         </div>
-                        <button onclick="checkPaymentAndPlay('${track.uri}')" class="play-button">Play</button>
+                        <button class="play-button" data-uri="${track.uri}">Play</button>
                     `;
                                 resultsDiv.appendChild(trackDiv);
                             });
@@ -291,7 +291,8 @@
                 function showPayment() {
                     document.getElementById('paymentModal').style.display = 'block';
                     document.querySelector('.main-content').classList.add('blurred');
-                    window.getPrice && window.getPrice(pendingAction);
+                    // Trigger getPrice via custom event
+                    window.dispatchEvent(new CustomEvent('updatePrice', { detail: { pendingAction } }));
                 }
 
                 function hidePayment() {
@@ -364,46 +365,47 @@
                 }
 
 
-                // expose functions to the global scope so page doesnt freak out
-                window.onPaymentSuccess = onPaymentSuccess;
-                window.hidePayment = hidePayment;
-                window.handleSearchSubmit = handleSearchSubmit;
-                window.checkPaymentAndPlay = checkPaymentAndPlay;
-                window.checkPaymentAndSkip = checkPaymentAndSkip;
-                window.Notify = Notify;
-                window.closeNotification = closeNotification;
+                // Wire up event listeners
+                document.getElementById('searchForm')?.addEventListener('submit', handleSearchSubmit);
+                document.getElementById('skip-button')?.addEventListener('click', checkPaymentAndSkip);
+                document.getElementById('hide-payment')?.addEventListener('click', hidePayment);
+                document.getElementById('close-notification')?.addEventListener('click', closeNotification);
 
-                //use getters and setters to keep track of the variables
-                Object.defineProperty(window, 'hasPaid', {
-                    get: function () { return hasPaid; },
-                    set: function (value) { hasPaid = value; }
+                // Event delegation for dynamically created play buttons
+                document.getElementById('searchResults')?.addEventListener('click', (e) => {
+                    if (e.target.matches('.play-button') || e.target.closest('.play-button')) {
+                        const button = e.target.matches('.play-button') ? e.target : e.target.closest('.play-button');
+                        const uri = button.dataset.uri;
+                        if (uri) checkPaymentAndPlay(uri);
+                    }
                 });
 
-                Object.defineProperty(window, 'currentID', {
-                    get: function () { return currentID; },
-                    set: function (value) { currentID = value; }
+                // Expose minimal API via custom events for pay.ejs communication
+                window.addEventListener('paymentSuccess', () => {
+                    onPaymentSuccess();
                 });
 
-                Object.defineProperty(window, 'pendingTrackUri', {
-                    get: function () { return pendingTrackUri; },
-                    set: function (value) { pendingTrackUri = value; }
+                window.addEventListener('hidePaymentModal', () => {
+                    hidePayment();
                 });
 
-                Object.defineProperty(window, 'pendingAction', {
-                    get: function () { return pendingAction; },
-                    set: function (value) { pendingAction = value; }
-                });
+                // Expose read-only state for pay.ejs (cannot be directly manipulated from console)
+                window.getPlayerState = function() {
+                    return {
+                        hasPaid: hasPaid,
+                        pendingAction: pendingAction,
+                        currentID: currentID
+                    };
+                };
 
-                Object.defineProperty(window, 'currentlyPlayingUri', {
-                    get: function () { return currentlyPlayingUri; },
-                    set: function (value) { currentlyPlayingUri = value; }
-                });
-
+                window.setPlayerState = function(updates) {
+                    if (updates.hasPaid !== undefined) hasPaid = updates.hasPaid;
+                    if (updates.pendingAction !== undefined) pendingAction = updates.pendingAction;
+                };
 
                 getQueue();
                 currentlyPlaying();
                 setInterval(getQueue, 7000);
-                setInterval(currentlyPlaying, 7000);
                 setInterval(currentlyPlaying, 7000);
             })();
         </script>
