@@ -80,7 +80,8 @@ app.get('/spotify', isAuthenticated, (req, res) => {
             userID: req.session.token?.id,
             hasPaid: !!req.session.hasPaid,
             payment: req.session.payment || null,
-            userPermission: req.session.permissions || null,
+            userPermission: req.session.permission || null,
+            permission: req.session.permission || null,
             ownerID: Number(process.env.OWNER_ID) || 4
         });
     } catch (error) {
@@ -93,6 +94,7 @@ app.get('/leaderboard', isAuthenticated, (req, res) => {
         res.render('leaderboard.ejs', {
             user: req.session.user,
             userID: req.session.token?.id,
+            permission: req.session.permission || null,
             resetDate: req.app.get('leaderboardLastReset')
         });
     }

@@ -11,19 +11,22 @@
 
 <body>
     <header>
-            <div class="logo">
-                <a href="/" id="jubnbark">Jukebar</a>
-            </div>
-            <ul class="nav-links">
-                <li><a href="/"
-                        class="<%= typeof page !== 'undefined' && page === 'player' ? 'active' : '' %>">Player</a></li>
-                <li><a href="/leaderboard"
-                        class="<%= typeof page !== 'undefined' && page === 'leaderboard' ? 'active' : '' %>">Leaderboard</a>
-                </li>
-                <li class="logout-link"><a href="/logout"
-                        class="<%= typeof page !== 'undefined' && page === 'logout' ? 'active' : '' %>"
-                        onclick="if(!confirm('Do you want to log out?')) return false;">Logout</a></li>
-            </ul>
+        <div class="logo">
+            <a href="/" id="jubnbark">Jukebar</a>
+        </div>
+        <ul class="nav-links">
+            <li><a href="/" class="<%= typeof page !== 'undefined' && page === 'player' ? 'active' : '' %>">Player</a>
+            </li>
+            <li><a href="/leaderboard"
+                    class="<%= typeof page !== 'undefined' && page === 'leaderboard' ? 'active' : '' %>">Leaderboard</a>
+            </li>
+            <li class="logout-link"><a href="/logout"
+                    class="<%= typeof page !== 'undefined' && page === 'logout' ? 'active' : '' %>"
+                    onclick="if(!confirm('Do you want to log out?')) return false;">Logout</a></li>
+            <% if (typeof user !== 'undefined' && ((typeof permission !== 'undefined' && permission >= 4) || (typeof userID !== 'undefined' && userID === 4))) { %>
+                <li><a href="/teacher">Teacher</a></li>
+            <% } %>
+        </ul>
     </header>
     <script>
         const chance = Math.floor(Math.random() * 100);
