@@ -81,7 +81,7 @@
                 let pendingTrackUri = null;
                 let pendingAction = null;
                 let currentlyPlayingUri = null;
-
+                const ownerID = <%= JSON.stringify(ownerID) %>;
 
                 function handleSearchSubmit(event) {
                     event.preventDefault();
@@ -95,7 +95,7 @@
                         return;
                     }
 
-                    if (currentID === 4) {
+                    if (currentID === ownerID) {
                         addToQueue(uri);
                         return;
                     }
@@ -107,26 +107,8 @@
                         return;
                     }
 
-                    // Claim payment on the server
-                    try {
-                        const res = await fetch('/claimPayment', { method: 'POST' });
-                        const data = await res.json();
-                        if (!data.ok) {
-                            pendingTrackUri = uri;
-                            showPayment();
-                            return;
-                        }
-                        // Reset payment after claiming
-                        hasPaid = false;
-                    } catch (e) {
-                        console.error('Failed to claim payment', e);
-                        pendingTrackUri = uri;
-                        showPayment();
-                        return;
-                    }
-
-                    //console.log('Payment verified, playing track:', uri);
-                    //console.log('it working');
+                    // Reset payment flag after using it
+                    hasPaid = false;
                     addToQueue(uri);
                 }
 
@@ -138,7 +120,7 @@
                     }
 
                     currentlyPlayingUri = `spotify:track:${currentlyPlayingUri}`;
-                    if (currentID === 4) {
+                    if (currentID === ownerID) {
                         skip(currentlyPlayingUri);
                         return;
                     }
@@ -150,27 +132,8 @@
                         return;
                     }
 
-                    // Claim payment on the server
-                    try {
-                        const res = await fetch('/claimPayment', { method: 'POST' });
-                        const data = await res.json();
-                        if (!data.ok) {
-                            pendingTrackUri;
-                            showPayment();
-                            return;
-                        }
-                        // Reset payment after claiming
-                        hasPaid = false;
-                    } catch (e) {
-                        console.error('Failed to claim payment', e);
-                        pendingTrackUri = currentlyPlayingUri;
-                        pendingAction = 'skip';
-                        showPayment();
-                        return;
-                    }
-
-                    //console.log('Payment verified, skipping track:', currentlyPlayingUri);
-                    //console.log('it working');
+                    // Reset payment flag after using it
+                    hasPaid = false;
                     skip(currentlyPlayingUri);
                 }
 
@@ -337,15 +300,18 @@
 
                     // Handle pending actions after payment
                     if (hasPaid && pendingAction) {
-                        if (pendingAction === 'play' && pendingTrackUri) {
-                            const uri = pendingTrackUri;
-                            pendingTrackUri = null;
-                            pendingAction = null;
-                            checkPaymentAndPlay(uri);
-                        } else if (pendingAction === 'skip') {
-                            pendingAction = null;
-                            checkPaymentAndSkip();
-                        }
+                        // Add a small delay to ensure session is saved on server
+                        setTimeout(() => {
+                            if (pendingAction === 'play' && pendingTrackUri) {
+                                const uri = pendingTrackUri;
+                                pendingTrackUri = null;
+                                pendingAction = null;
+                                checkPaymentAndPlay(uri);
+                            } else if (pendingAction === 'skip') {
+                                pendingAction = null;
+                                checkPaymentAndSkip();
+                            }
+                        }, 100); // 100ms delay
                     }
                 }
 

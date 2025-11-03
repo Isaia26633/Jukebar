@@ -13,6 +13,19 @@ db.run(`CREATE TABLE IF NOT EXISTS users (
     displayName TEXT,
     pin INTEGER,
     songsPlayed INTEGER DEFAULT 0
+);`);
+
+db.run(`CREATE TABLE IF NOT EXISTS transactions (
+    id INTEGER PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    display_name TEXT NOT NULL,
+    action TEXT NOT NULL,
+    track_uri TEXT,
+    track_name TEXT,
+    artist_name TEXT,
+    cost INTEGER NOT NULL,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
 )`);
 
 

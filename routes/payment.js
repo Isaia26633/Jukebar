@@ -6,7 +6,7 @@ const FORMBAR_ADDRESS = process.env.FORMBAR_ADDRESS;
 
 router.post('/transfer', async (req, res) => {
     try {
-        const to = process.env.RECIPIENT_ID;
+        const to = process.env.OWNER_ID;
     let { pin, reason, amount } = req.body || {};
     amount = Number(amount)
     const pendingAction = req.body.pendingAction;
@@ -14,13 +14,17 @@ router.post('/transfer', async (req, res) => {
         //gets the top 3 users to apply a discount
         const topUsers = await new Promise((resolve, reject) => {
             db.all("SELECT id FROM users ORDER BY songsPlayed DESC LIMIT 3", (err, rows) => {
+                // if it gets the owner ID skip it
+                if (rows) {
+                    rows = rows.filter(r => r.id != process.env.OWNER_ID);
+                }
                 if (err) return reject(err);
                 resolve(rows.map(r => r.id));
             });
         });
 
         const userRow = await new Promise((resolve, reject) => {
-            db.get("SELECT id FROM users WHERE id = ?", [req.session.token?.id], (err, row) => {
+            db.get("SELECT id, songsPlayed FROM users WHERE id = ?", [req.session.token?.id], (err, row) => {
                 if (err) {
                     reject(err);
                 } else {
@@ -43,7 +47,7 @@ router.post('/transfer', async (req, res) => {
                 }
             }
             // no discount for users who haven't played any songs
-            const songsPlayed = userRow.songsPlayed;
+            const songsPlayed = userRow?.songsPlayed || 0;
             if (songsPlayed == 0) {
                 amount = 50;
             }
@@ -82,6 +86,7 @@ router.post('/transfer', async (req, res) => {
 
         // Check if the transfer was successful based on the response
         if (transferResult.ok && responseJson) {
+            console.log('Setting hasPaid = true for user:', req.session.token?.id);
             req.session.hasPaid = true;
             req.session.payment = {
                 from: Number(userRow.id),
@@ -89,7 +94,13 @@ router.post('/transfer', async (req, res) => {
                 amount: Number(amount),
                 at: Date.now()
             };
-            return req.session.save(() => {
+            console.log('Session before save:', { id: req.session.token?.id, hasPaid: req.session.hasPaid });
+            return req.session.save((err) => {
+                if (err) {
+                    console.error('Session save error:', err);
+                    return res.status(500).json({ ok: false, error: 'Session save failed' });
+                }
+                console.log('Session saved successfully, hasPaid should be true');
                 res.json({ ok: true, message: 'Transfer successful', response: responseJson });
             });
         } else {
@@ -143,7 +154,7 @@ router.post('/transfer', async (req, res) => {
 
 router.post('/refund', async (req, res) => {
     try {
-        const from = process.env.RECIPIENT_ID;
+        const from = process.env.OWNER_ID;
         const amount = process.env.TRANSFER_AMOUNT || 50;
         const reason = "Jukebar refund"
         const pin = process.env.PIN
@@ -322,6 +333,18 @@ router.post('/getAmount', async (req, res) => {
     } catch (err) {
         res.status(500).json({ ok: false, error: err.message });
     }
+});
+
+// TEMPORARY TEST ENDPOINT - REMOVE IN PRODUCTION
+router.post('/testPayment', (req, res) => {
+    if (!req.session || !req.session.token) {
+        return res.status(401).json({ ok: false, error: 'Not logged in' });
+    }
+    
+    req.session.hasPaid = true;
+    req.session.save(() => {
+        res.json({ ok: true, message: 'Payment flag set for testing' });
+    });
 });
 
 module.exports = router;

@@ -7,8 +7,9 @@ const { setRawToken } = require('./socket');
 const FORMBAR_ADDRESS = process.env.FORMBAR_ADDRESS;
 const API_KEY = process.env.API_KEY || '';
 const port = process.env.PORT || 5000;
+const URL = process.env.URL || `http://localhost`;
 const AUTH_URL = `${FORMBAR_ADDRESS}/oauth`;
-const THIS_URL = `http://172.16.3.115:${port}/login`;
+const THIS_URL = `${URL}:${port}/login`;
 
 router.get('/login', (req, res) => {
     if (req.query.token) {

@@ -23,7 +23,12 @@ app.use(express.static('public'));
 app.use(session({
     secret: 'thisisasupersecretsigmaskibidikeyandihavethekeytotheuniversebutnobodywillknowabcdefghijklmnopqrstuvwxyz',
     resave: false,
-    saveUninitialized: false
+    saveUninitialized: false,
+    cookie: {
+        secure: false, // Set to true if using HTTPS
+        httpOnly: true,
+        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    }
 }));
 
 const { isAuthenticated } = require('./middleware/auth');
@@ -31,7 +36,7 @@ const { isAuthenticated } = require('./middleware/auth');
 const { router: authRoutes } = require('./routes/auth');
 const spotifyRoutes = require('./routes/spotify');
 const paymentRoutes = require('./routes/payment');
-const leaderboardRoutes = require('./routes/leaderboard');
+const { router: leaderboardRoutes, checkAndResetLeaderboard } = require('./routes/leaderboard');
 // const { setupFormbarSocket } = require('./routes/socket');
 
 // Formbar Socket.IO connection
@@ -59,7 +64,8 @@ app.get('/', isAuthenticated, (req, res) => {
             userID: req.session.token?.id,
             hasPaid: !!req.session.hasPaid,
             payment: req.session.payment || null,
-            userPermission: req.session.permission || null
+            userPermission: req.session.permission || null,
+            ownerID: Number(process.env.OWNER_ID) || 1
         });
     } catch (error) {
         res.send(error.message);
@@ -73,7 +79,8 @@ app.get('/spotify', isAuthenticated, (req, res) => {
             userID: req.session.token?.id,
             hasPaid: !!req.session.hasPaid,
             payment: req.session.payment || null,
-            userPermission: req.session.permissions || null
+            userPermission: req.session.permissions || null,
+            ownerID: Number(process.env.OWNER_ID) || 4
         });
     } catch (error) {
         res.send(error.message);
@@ -98,7 +105,7 @@ app.use('/', spotifyRoutes);
 app.use('/', paymentRoutes);
 app.use('/', leaderboardRoutes);
 
-server.listen(port, () => {
+server.listen(port, async () => {
     console.log(`Server listening at http://localhost:${port}`);
 });
 
