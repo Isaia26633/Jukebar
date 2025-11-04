@@ -66,7 +66,7 @@ app.get('/', isAuthenticated, (req, res) => {
             hasPaid: !!req.session.hasPaid,
             payment: req.session.payment || null,
             userPermission: req.session.permission || null,
-            ownerID: Number(process.env.OWNER_ID) || 1
+            ownerID: Number(process.env.OWNER_ID) || 4
         });
     } catch (error) {
         res.send(error.message);
@@ -81,7 +81,6 @@ app.get('/spotify', isAuthenticated, (req, res) => {
             hasPaid: !!req.session.hasPaid,
             payment: req.session.payment || null,
             userPermission: req.session.permission || null,
-            permission: req.session.permission || null,
             ownerID: Number(process.env.OWNER_ID) || 4
         });
     } catch (error) {
@@ -94,11 +93,29 @@ app.get('/leaderboard', isAuthenticated, (req, res) => {
         res.render('leaderboard.ejs', {
             user: req.session.user,
             userID: req.session.token?.id,
-            permission: req.session.permission || null,
-            resetDate: req.app.get('leaderboardLastReset')
+            userPermission: req.session.permission || null,
+            resetDate: req.app.get('leaderboardLastReset'),
+            ownerID: Number(process.env.OWNER_ID) || 4
         });
     }
     catch (error) {
+        res.send(error.message);
+    }
+});
+
+app.get('/teacher', isAuthenticated, (req, res) => {
+    try {
+        if (req.session.permission >= 4 || req.session.token?.id === Number(process.env.OWNER_ID)) {
+            res.render('teacher.ejs', {
+                user: req.session.user,
+                userID: req.session.token?.id,
+                userPermission: req.session.permission || null,
+                ownerID: Number(process.env.OWNER_ID) || 4
+            });
+        } else {
+            res.redirect('/');
+        }
+    } catch (error) {
         res.send(error.message);
     }
 });

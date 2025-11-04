@@ -15,6 +15,16 @@
             <a href="/" id="jubnbark">Jukebar</a>
         </div>
         <ul class="nav-links">
+            <% 
+                const permVal = Number(typeof userPermission !== 'undefined' ? userPermission : (user && user.permission));
+                const uid = String(typeof userID !== 'undefined' ? userID : (user && user.id ? user.id : ''));
+                const owner = String(typeof ownerID !== 'undefined' ? ownerID : '');
+            %>
+            <li>
+                <% if (permVal >= 4 || (owner && uid === owner)) { %>
+                    <a href="/teacher" class="<%= typeof page !== 'undefined' && page === 'teacher' ? 'active' : '' %>">Teacher</a>
+                <% } %>
+            </li>
             <li><a href="/" class="<%= typeof page !== 'undefined' && page === 'player' ? 'active' : '' %>">Player</a>
             </li>
             <li><a href="/leaderboard"
@@ -23,9 +33,6 @@
             <li class="logout-link"><a href="/logout"
                     class="<%= typeof page !== 'undefined' && page === 'logout' ? 'active' : '' %>"
                     onclick="if(!confirm('Do you want to log out?')) return false;">Logout</a></li>
-            <% if (typeof user !== 'undefined' && ((typeof permission !== 'undefined' && permission >= 4) || (typeof userID !== 'undefined' && userID === 4))) { %>
-                <li><a href="/teacher">Teacher</a></li>
-            <% } %>
         </ul>
     </header>
     <script>
